@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Accesos a Proyectos</title>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    
+    <!-- Quill CSS -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container-fluid px-3 px-md-4 px-xl-5">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-project-diagram me-2"></i>
+                <span>Gestión de Accesos</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="navDashboard">
+                            <i class="fas fa-chart-line me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="navProyectos">
+                            <i class="fas fa-folder-open me-1"></i> Proyectos
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4 px-3 px-md-4 px-xl-5">
+        <!-- Dashboard Section -->
+        <section id="dashboardSection">
+            <!-- Stats Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-xl col-md-6">
+                    <div class="card stat-card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">Total Proyectos</h6>
+                                    <h2 class="mb-0 fw-bold" id="statTotal">0</h2>
+                                </div>
+                                <div class="stat-icon bg-primary-subtle">
+                                    <i class="fas fa-folder text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-6">
+                    <div class="card stat-card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">En Proceso</h6>
+                                    <h2 class="mb-0 fw-bold text-warning" id="statEnProceso">0</h2>
+                                </div>
+                                <div class="stat-icon bg-warning-subtle">
+                                    <i class="fas fa-spinner text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-6">
+                    <div class="card stat-card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">Terminados</h6>
+                                    <h2 class="mb-0 fw-bold text-success" id="statTerminados">0</h2>
+                                </div>
+                                <div class="stat-icon bg-success-subtle">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-6">
+                    <div class="card stat-card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">Observaciones</h6>
+                                    <h2 class="mb-0 fw-bold text-observaciones" id="statObservaciones">0</h2>
+                                </div>
+                                <div class="stat-icon bg-observaciones-subtle">
+                                    <i class="fas fa-eye text-observaciones"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-6">
+                    <div class="card stat-card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">Rechazados</h6>
+                                    <h2 class="mb-0 fw-bold text-danger" id="statRechazados">0</h2>
+                                </div>
+                                <div class="stat-icon bg-danger-subtle">
+                                    <i class="fas fa-times-circle text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons & Filters -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-medium">Filtrar por Marca</label>
+                            <select class="form-select" id="filterMarca">
+                                <option value="">Todas las marcas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-medium">Filtrar por Estado</label>
+                            <select class="form-select" id="filterEstado">
+                                <option value="">Todos los estados</option>
+                                <option value="En proceso">En proceso</option>
+                                <option value="Terminado">Terminado</option>
+                                <option value="Observaciones">Observaciones</option>
+                                <option value="Rechazado">Rechazado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-medium">Filtrar por Responsable</label>
+                            <select class="form-select" id="filterResponsable">
+                                <option value="">Todos los responsables</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <button class="btn btn-primary btn-lg" id="btnNuevoProyecto">
+                                <i class="fas fa-plus me-2"></i>Nuevo Proyecto
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projects Table -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-semibold">
+                        <i class="fas fa-list me-2 text-primary"></i>Listado de Proyectos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tablaProyectos" class="table table-hover align-middle" style="width:100%">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fecha</th>
+                                    <th>Proyecto</th>
+                                    <th>Marca</th>
+                                    <th>Responsable</th>
+                                    <th>Área</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data loaded via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal: Crear/Editar Proyecto -->
+    <div class="modal fade" id="modalProyecto" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-folder-plus me-2"></i>
+                        <span id="modalProyectoTitle">Nuevo Proyecto</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formProyecto">
+                        <input type="hidden" id="proyectoId">
+                        
+                        <!-- Información General -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-medium">Nombre del Proyecto <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="nombreProyecto" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-medium">Marca <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="marca" required>
+                                            <option value="">Seleccionar marca...</option>
+                                            <option value="IEmpresa">IEmpresa</option>
+                                            <option value="JVN">JVN</option>
+                                            <option value="Blackwell">Blackwell</option>
+                                            <option value="ITAE">ITAE</option>
+                                            <option value="Eurocoach">Eurocoach</option>
+                                            <option value="Iberoteca">Iberoteca</option>
+                                            <option value="Thoth">Thoth</option>
+                                            <option value="Otros">Otros...</option>
+                                        </select>
+                                        <div id="marcaOtrosDiv" class="mt-2" style="display:none">
+                                            <input type="text" class="form-control form-control-sm" id="marcaOtros" placeholder="Escribe el nombre de la marca...">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium">Responsable <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="responsable" required>
+                                            <option value="">Seleccionar responsable...</option>
+                                            <option value="Erick">Erick</option>
+                                            <option value="Scott">Scott</option>
+                                            <option value="Luigui">Luigui</option>
+                                            <option value="Mayra">Mayra</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium">Área <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="area" required>
+                                            <option value="">Seleccionar área...</option>
+                                            <option value="OSE">OSE</option>
+                                            <option value="DAD">DAD</option>
+                                            <option value=".ID.">.ID.</option>
+                                            <option value="Otros">Otros...</option>
+                                        </select>
+                                        <div id="areaOtrosDiv" class="mt-2" style="display:none">
+                                            <input type="text" class="form-control form-control-sm" id="areaOtros" placeholder="Escribe el nombre del área...">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium">Participantes</label>
+                                        <input type="text" class="form-control" id="participantes" placeholder="Ej: Juan, María, Pedro">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Requerimiento, Adjuntos y Comentarios -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Descripción del Proyecto</h6>
+                            </div>
+                            <div class="card-body">
+
+                                <!-- Requerimiento -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-medium">Requerimiento</label>
+                                    <div id="editorRequerimiento" class="quill-editor"></div>
+                                </div>
+
+                                <!-- Adjuntos (entre Requerimiento y Comentarios) -->
+                                <div class="pt-2 mt-1 border-top mb-3">
+                                    <label class="form-label fw-medium mt-2">
+                                        <i class="fas fa-paperclip me-1 text-muted"></i>Adjuntos
+                                        <span class="text-muted fw-normal">(imágenes o documentos)</span>
+                                    </label>
+                                    <div id="adjuntosDropZone" class="adjuntos-dropzone">
+                                        <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2 d-block"></i>
+                                        <p class="mb-2 text-muted small">Arrastra archivos aquí, pega con <kbd>Ctrl+V</kbd></p>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnSelectFiles">
+                                            <i class="fas fa-folder-open me-1"></i>Seleccionar archivos
+                                        </button>
+                                        <input type="file" id="adjuntosFileInput" multiple
+                                               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
+                                               style="display:none">
+                                    </div>
+                                    <div id="adjuntosPreviewGrid" class="adjuntos-preview-grid mt-2"></div>
+                                </div>
+
+                                <!-- Comentarios -->
+                                <div class="pt-2 mt-1 border-top">
+                                    <label class="form-label fw-medium mt-2">Comentarios Iniciales <span class="text-muted fw-normal">(opcional)</span></label>
+                                    <div id="editorComentarios" class="quill-editor"></div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Accesos -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0"><i class="fas fa-key me-2"></i>Accesos</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddAcceso">
+                                    <i class="fas fa-plus me-1"></i>Agregar Acceso
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="accesosContainer">
+                                    <!-- Dynamic access fields -->
+                                </div>
+                                <p class="text-muted small mb-0" id="noAccesos">
+                                    <i class="fas fa-info-circle me-1"></i>No hay accesos agregados. Haga clic en "Agregar Acceso".
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Plataformas -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0"><i class="fas fa-globe me-2"></i>Plataformas</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPlataforma">
+                                    <i class="fas fa-plus me-1"></i>Agregar Plataforma
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="plataformasContainer">
+                                    <!-- Dynamic platform fields -->
+                                </div>
+                                <p class="text-muted small mb-0" id="noPlataformas">
+                                    <i class="fas fa-info-circle me-1"></i>No hay plataformas agregadas. Haga clic en "Agregar Plataforma".
+                                </p>
+                            </div>
+                        </div>
+
+
+
+                        <!-- Estado -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-tasks me-2"></i>Estado del Proyecto</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium">Estado</label>
+                                        <select class="form-select" id="estado">
+                                            <option value="En proceso">En proceso</option>
+                                            <option value="Terminado">Terminado</option>
+                                            <option value="Observaciones">Observaciones</option>
+                                            <option value="Rechazado">Rechazado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-medium">Comentarios de Estado</label>
+                                        <textarea class="form-control" id="comentariosEstado" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarProyecto">
+                        <i class="fas fa-save me-1"></i>Guardar Proyecto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Detalle del Proyecto -->
+    <div class="modal fade" id="modalDetalle" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-eye me-2"></i>
+                        <span id="modalDetalleTitle">Detalle del Proyecto</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detalleContent">
+                    <!-- Content loaded dynamically -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cerrar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnEditarDesdeDetalle">
+                        <i class="fas fa-edit me-1"></i>Editar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-container">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-primary fw-medium">Cargando datos...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- Bootstrap Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Quill -->
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="main.js"></script>
+</body>
+</html>
