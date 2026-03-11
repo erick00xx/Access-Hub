@@ -318,33 +318,131 @@ body {
     margin-bottom: 0.35rem;
 }
 
-/* Detail View */
+/* ─── Detail View ──────────────────────────────────────────── */
+
+/* Info grid at top */
+.detalle-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem 1.25rem;
+    background: #f8fafc;
+    border: 1px solid #e8edf3;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+}
+
+.detalle-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detalle-info-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+}
+
+.detalle-info-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    word-break: break-word;
+}
+
+/* Section headings */
 .detail-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
 }
 
 .detail-section h6 {
     color: var(--primary-color);
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.82rem;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.4rem;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
     border-bottom: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
 }
 
-/* Compact info bar at top of detail modal */
-.detalle-header-info {
+/* Rich content (requerimiento / comentarios) */
+.detalle-rich-content {
     background: #f8fafc;
+    border: 1px solid #e8edf3;
     border-radius: 8px;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem !important;
+    padding: 1rem 1.25rem;
+    font-size: 0.93rem;
+    line-height: 1.7;
+    color: #374151;
+    min-height: 3rem;
 }
 
-.detalle-header-info .gap-2 {
-    gap: 0.6rem !important;
-    row-gap: 0.4rem !important;
+/* Acceso grid */
+.acceso-grid, .plataforma-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.acceso-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+}
+
+.acceso-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 0.3rem;
+}
+
+.acceso-value {
+    font-size: 0.95rem;
+    color: #1e293b;
+    word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Plataforma grid */
+.plataforma-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+}
+
+.plataforma-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 0.3rem;
+}
+
+.plataforma-link {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    word-break: break-all;
+    display: inline-flex;
+    align-items: center;
+}
+
+.plataforma-link:hover {
+    text-decoration: underline;
 }
 
 /* Sticky estado card */
@@ -355,13 +453,46 @@ body {
 }
 
 .detalle-estado-card .card-body {
-    padding: 1rem;
+    padding: 1.25rem;
 }
 
-.detail-item {
+.detalle-estado-titulo {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
     margin-bottom: 0.75rem;
 }
 
+.detalle-estado-badge {
+    font-size: 0.9rem !important;
+    padding: 0.45em 1.1em !important;
+    border-radius: 20px !important;
+}
+
+.detalle-meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0.6rem 0;
+}
+
+.detalle-meta-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #64748b;
+}
+
+.detalle-meta-value {
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+
+/* Legacy compat */
+.detail-item { margin-bottom: 0.75rem; }
 .detail-label {
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -370,23 +501,11 @@ body {
     font-weight: 600;
     margin-bottom: 0.25rem;
 }
+.detail-value { font-size: 0.95rem; color: #1e293b; }
+.detail-value a { color: var(--primary-color); text-decoration: none; }
+.detail-value a:hover { text-decoration: underline; }
 
-.detail-value {
-    font-size: 0.95rem;
-    color: #1e293b;
-}
-
-.detail-value a {
-    color: var(--primary-color);
-    text-decoration: none;
-}
-
-.detail-value a:hover {
-    text-decoration: underline;
-}
-
-/* Acceso Card in Detail */
-.acceso-card, .plataforma-card, .imagen-card {
+.imagen-card {
     background: #f8fafc;
     border-radius: 10px;
     padding: 1rem;

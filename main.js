@@ -523,24 +523,24 @@ function verProyecto(id) {
     
     let accesosHtml = '';
     if (proyecto.accesos && proyecto.accesos.length > 0) {
-        accesosHtml = proyecto.accesos.map(a => `
+        accesosHtml = `<div class="acceso-grid">${proyecto.accesos.map(a => `
             <div class="acceso-card">
-                <strong>${a.titulo}:</strong>
-                <div class="mt-1">${a.valor}</div>
+                <span class="acceso-label">${a.titulo}</span>
+                <div class="acceso-value">${a.valor}</div>
             </div>
-        `).join('');
+        `).join('')}</div>`;
     } else {
         accesosHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay accesos registrados</p>';
     }
     
     let plataformasHtml = '';
     if (proyecto.plataformas && proyecto.plataformas.length > 0) {
-        plataformasHtml = proyecto.plataformas.map(p => `
+        plataformasHtml = `<div class="plataforma-grid">${proyecto.plataformas.map(p => `
             <div class="plataforma-card">
-                <strong>${p.titulo}:</strong>
-                <div class="mt-1"><a href="${p.valor}" target="_blank">${p.valor}</a></div>
+                <span class="plataforma-label">${p.titulo}</span>
+                <a class="plataforma-link" href="${p.valor}" target="_blank"><i class="fas fa-external-link-alt me-1"></i>${p.valor}</a>
             </div>
-        `).join('');
+        `).join('')}</div>`;
     } else {
         plataformasHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay plataformas registradas</p>';
     }
@@ -553,27 +553,47 @@ function verProyecto(id) {
 
     const html = `
         <div class="detalle-proyecto">
-            <!-- Barra compacta de info del proyecto -->
-            <div class="detalle-header-info mb-3 pb-3 border-bottom">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    ${proyecto.marca ? `<span class="badge badge-marca badge-${marcaClass}">${proyecto.marca}</span>` : ''}
-                    <span class="small text-dark"><i class="fas fa-user text-muted me-1"></i><strong>${proyecto.responsable}</strong></span>
-                    <span class="small text-muted"><i class="fas fa-building me-1"></i>${proyecto.area}</span>
-                    ${proyecto.participantes ? `<span class="small text-muted"><i class="fas fa-users me-1"></i>${proyecto.participantes}</span>` : ''}
-                    <span class="small text-muted ms-auto"><i class="fas fa-calendar-alt me-1"></i>${proyecto.fechaCreacion}</span>
+
+            <!-- Info general del proyecto -->
+            <div class="detalle-info-grid mb-4">
+                ${proyecto.marca ? `
+                <div class="detalle-info-item">
+                    <span class="detalle-info-label"><i class="fas fa-tag me-1"></i>Marca</span>
+                    <span class="detalle-info-value"><span class="badge badge-marca badge-${marcaClass} fs-6">${proyecto.marca}</span></span>
+                </div>` : ''}
+                <div class="detalle-info-item">
+                    <span class="detalle-info-label"><i class="fas fa-user me-1"></i>Responsable</span>
+                    <span class="detalle-info-value fw-semibold">${proyecto.responsable}</span>
+                </div>
+                <div class="detalle-info-item">
+                    <span class="detalle-info-label"><i class="fas fa-building me-1"></i>Área</span>
+                    <span class="detalle-info-value">${proyecto.area}</span>
+                </div>
+                ${proyecto.participantes ? `
+                <div class="detalle-info-item">
+                    <span class="detalle-info-label"><i class="fas fa-users me-1"></i>Participantes</span>
+                    <span class="detalle-info-value">${proyecto.participantes}</span>
+                </div>` : ''}
+                <div class="detalle-info-item">
+                    <span class="detalle-info-label"><i class="fas fa-calendar-plus me-1"></i>Creado</span>
+                    <span class="detalle-info-value">${proyecto.fechaCreacion}</span>
+                </div>
+                <div class="detalle-info-item">
+                    <span class="detalle-info-label"><i class="fas fa-hashtag me-1"></i>ID</span>
+                    <span class="detalle-info-value text-muted">${proyecto.id}</span>
                 </div>
             </div>
 
             <div class="row g-4">
-                <div class="col-md-8">
+                <div class="col-lg-8">
 
-                    <!-- Plataformas / URLs — PRIORIDAD 1 -->
+                    <!-- Plataformas / URLs -->
                     <div class="detail-section">
                         <h6><i class="fas fa-globe me-2"></i>Plataformas / URLs</h6>
                         ${plataformasHtml}
                     </div>
 
-                    <!-- Accesos — PRIORIDAD 2 -->
+                    <!-- Accesos -->
                     <div class="detail-section">
                         <h6><i class="fas fa-key me-2"></i>Accesos</h6>
                         ${accesosHtml}
@@ -582,51 +602,46 @@ function verProyecto(id) {
                     <!-- Requerimiento -->
                     <div class="detail-section">
                         <h6><i class="fas fa-file-alt me-2"></i>Requerimiento</h6>
-                        <div class="detail-value bg-light p-3 rounded">
+                        <div class="detalle-rich-content">
                             ${proyecto.requerimiento || '<em class="text-muted">Sin requerimiento especificado</em>'}
                         </div>
                     </div>
 
                     <!-- Imágenes / Documentos -->
                     <div class="detail-section">
-                        <h6><i class="fas fa-images me-2"></i>Imágenes / Documentos</h6>
+                        <h6><i class="fas fa-images me-2"></i>Adjuntos</h6>
                         ${imagenesHtml}
                     </div>
 
                     ${proyecto.comentarios ? `
-                    <!-- Comentarios — al final -->
                     <div class="detail-section">
                         <h6><i class="fas fa-comments me-2"></i>Comentarios</h6>
-                        <div class="detail-value bg-light p-3 rounded">
+                        <div class="detalle-rich-content">
                             ${proyecto.comentarios}
                         </div>
-                    </div>
-                    ` : ''}
+                    </div>` : ''}
 
                 </div>
 
-                <div class="col-md-4">
-                    <!-- Tarjeta de estado lateral -->
+                <div class="col-lg-4">
+                    <!-- Tarjeta de estado -->
                     <div class="card border-0 shadow-sm detalle-estado-card">
-                        <div class="card-body text-center">
-                            <p class="text-muted small text-uppercase fw-semibold mb-2">Estado del Proyecto</p>
-                            <span class="badge badge-estado ${estadoBadge} fs-6 d-inline-block mb-3">${proyecto.estado}</span>
-                            <hr class="my-2">
-                            <div class="text-start small">
-                                <div class="mb-2">
-                                    <span class="text-muted">ID:</span>
-                                    <strong class="ms-1">${proyecto.id}</strong>
-                                </div>
-                                <div class="text-muted mb-1">Última actualización:</div>
-                                <div class="fw-medium">${proyecto.fechaActualizacion || '-'}</div>
+                        <div class="card-body">
+                            <p class="detalle-estado-titulo">Estado del Proyecto</p>
+                            <div class="text-center mb-3">
+                                <span class="badge badge-estado ${estadoBadge} detalle-estado-badge">${proyecto.estado}</span>
+                            </div>
+                            <hr>
+                            <div class="detalle-meta-row">
+                                <span class="detalle-meta-label">Última actualización</span>
+                                <span class="detalle-meta-value">${proyecto.fechaActualizacion || '-'}</span>
                             </div>
                             ${proyecto.comentariosEstado ? `
-                            <hr class="my-2">
-                            <div class="text-start small">
-                                <div class="text-muted mb-1">Nota de estado:</div>
-                                <div>${proyecto.comentariosEstado}</div>
-                            </div>
-                            ` : ''}
+                            <hr>
+                            <div class="detalle-meta-row">
+                                <span class="detalle-meta-label">Nota de estado</span>
+                                <span class="detalle-meta-value">${proyecto.comentariosEstado}</span>
+                            </div>` : ''}
                         </div>
                     </div>
                 </div>
