@@ -523,12 +523,38 @@ function verProyecto(id) {
     
     let accesosHtml = '';
     if (proyecto.accesos && proyecto.accesos.length > 0) {
-        accesosHtml = `<div class="acceso-grid">${proyecto.accesos.map(a => `
+        accesosHtml = `<div class="acceso-grid">${proyecto.accesos.map((a, idx) => {
+            const partes = (a.valor || '').split(' | ');
+            const usuario = partes[0] ? partes[0].trim() : '';
+            const pass    = partes.slice(1).join(' | ').trim();
+            const uid      = `accp_${proyecto.id}_${idx}`;
+            const uEsc     = usuario.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+            const pEsc     = pass.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+            return `
             <div class="acceso-card">
-                <span class="acceso-label">${a.titulo}</span>
-                <div class="acceso-value">${a.valor}</div>
-            </div>
-        `).join('')}</div>`;
+                <div class="acceso-title-bar">
+                    <i class="fas fa-key me-2"></i>${a.titulo}
+                </div>
+                <div class="acceso-fields">
+                    <div class="acceso-field-row">
+                        <span class="acceso-field-label"><i class="fas fa-user me-1"></i>Usuario</span>
+                        <div class="acceso-field-value-wrap">
+                            <code class="acceso-field-value">${usuario || '-'}</code>
+                            ${usuario ? `<button type="button" class="btn-acceso-action" data-v="${uEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar usuario"><i class="fas fa-copy"></i></button>` : ''}
+                        </div>
+                    </div>
+                    <div class="acceso-field-row">
+                        <span class="acceso-field-label"><i class="fas fa-lock me-1"></i>Contraseña</span>
+                        <div class="acceso-field-value-wrap">
+                            <code class="acceso-field-value pass-hidden" id="${uid}" data-pass="${pEsc}">${pass ? '••••••••' : '-'}</code>
+                            ${pass ? `
+                            <button type="button" class="btn-acceso-action btn-toggle-pass" data-target="${uid}" onclick="toggleAccesoPassword(this)" title="Ver/ocultar contraseña"><i class="fas fa-eye"></i></button>
+                            <button type="button" class="btn-acceso-action" data-target="${uid}" onclick="copiarPassSpan(this)" title="Copiar contraseña"><i class="fas fa-copy"></i></button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('')}</div>`;
     } else {
         accesosHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay accesos registrados</p>';
     }
@@ -663,26 +689,59 @@ function verProyecto(id) {
 function agregarCampoDinamico(tipo, titulo = '', valor = '') {
     const container = $(`#${tipo}Container`);
     const index = container.children('.dynamic-field').length;
-    
-    let placeholderTitulo = 'Título';
-    let placeholderValor = 'URL o valor';
-    let iconClass = 'fa-link';
-    
+    let html = '';
+
     if (tipo === 'accesos') {
-        placeholderTitulo = 'Ej: Admin, Cliente, Usuario';
-        placeholderValor = 'Ej: usuario | Password: 123';
-        iconClass = 'fa-key';
-    } else if (tipo === 'plataformas') {
-        placeholderTitulo = 'Ej: Github, Bitrix, Loocker';
-        placeholderValor = 'https://...';
-        iconClass = 'fa-globe';
-    } else if (tipo === 'imagenes') {
-        placeholderTitulo = 'Ej: Diagrama, Wireframe, Mockup';
-        placeholderValor = 'URL de la imagen';
-        iconClass = 'fa-image';
-    }
-    
-    const html = `
+        // Separar usuario y contraseña del campo valor (formato: "usuario | pass")
+        const partes    = valor.split(' | ');
+        const usuarioVal = partes[0] ? partes[0].trim() : '';
+        const passVal    = partes.slice(1).join(' | ').trim();
+
+        html = `
+        <div class="dynamic-field" data-index="${index}">
+            <button type="button" class="btn btn-outline-danger btn-sm btn-remove" onclick="removerCampoDinamico(this, '${tipo}')">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="row g-2 align-items-center">
+                <div class="col-sm-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                        <input type="text" class="form-control campo-titulo" placeholder="Tipo (Admin, Cliente...)" value="${titulo}">
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control campo-usuario" placeholder="Usuario" value="${usuarioVal}" autocomplete="off">
+                    </div>
+                </div>
+                <div class="col-sm-5">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control campo-password" placeholder="Contraseña" value="${passVal}" autocomplete="new-password">
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordField(this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    } else {
+        let placeholderTitulo = 'Título';
+        let placeholderValor  = 'URL o valor';
+        let iconClass         = 'fa-link';
+
+        if (tipo === 'plataformas') {
+            placeholderTitulo = 'Ej: Github, Bitrix, Loocker';
+            placeholderValor  = 'https://';
+            iconClass         = 'fa-globe';
+        } else if (tipo === 'imagenes') {
+            placeholderTitulo = 'Ej: Diagrama, Wireframe, Mockup';
+            placeholderValor  = 'URL de la imagen';
+            iconClass         = 'fa-image';
+        }
+
+        html = `
         <div class="dynamic-field" data-index="${index}">
             <button type="button" class="btn btn-outline-danger btn-sm btn-remove" onclick="removerCampoDinamico(this, '${tipo}')">
                 <i class="fas fa-times"></i>
@@ -698,9 +757,9 @@ function agregarCampoDinamico(tipo, titulo = '', valor = '') {
                     <input type="text" class="form-control form-control-sm campo-valor" placeholder="${placeholderValor}" value="${valor}">
                 </div>
             </div>
-        </div>
-    `;
-    
+        </div>`;
+    }
+
     container.append(html);
     actualizarVisibilidadNoItems();
 }
@@ -720,9 +779,17 @@ function obtenerCamposDinamicos(tipo) {
     const items = [];
     $(`#${tipo}Container .dynamic-field`).each(function() {
         const titulo = $(this).find('.campo-titulo').val().trim();
-        const valor = $(this).find('.campo-valor').val().trim();
-        if (titulo || valor) {
-            items.push({ titulo, valor });
+        if (tipo === 'accesos') {
+            const usuario  = $(this).find('.campo-usuario').val().trim();
+            const password = $(this).find('.campo-password').val().trim();
+            if (titulo || usuario || password) {
+                items.push({ titulo, valor: `${usuario} | ${password}` });
+            }
+        } else {
+            const valor = $(this).find('.campo-valor').val().trim();
+            if (titulo || valor) {
+                items.push({ titulo, valor });
+            }
         }
     });
     return items;
@@ -1216,6 +1283,73 @@ function getAreaValue() {
     return $('#area').val() === 'Otros'
         ? ($('#areaOtros').val().trim() || 'Otros')
         : $('#area').val();
+}
+
+// ============================================
+// UTILIDADES DE ACCESOS / CREDENCIALES
+// ============================================
+
+/**
+ * Alterna visibilidad de contraseña en tarjeta de detalle
+ */
+function toggleAccesoPassword(btn) {
+    const span    = document.getElementById(btn.dataset.target);
+    const hidden  = span.classList.contains('pass-hidden');
+    span.textContent = hidden ? span.dataset.pass : '••••••••';
+    span.classList.toggle('pass-hidden', !hidden);
+    btn.querySelector('i').className = hidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+/**
+ * Copia la contraseña del span referenciado
+ */
+function copiarPassSpan(btn) {
+    const span = document.getElementById(btn.dataset.target);
+    copiarAlPortapapeles(span.dataset.pass, btn);
+}
+
+/**
+ * Copia texto al portapapeles con feedback visual
+ */
+function copiarAlPortapapeles(text, btn) {
+    const doFeedback = () => {
+        const icon = btn.querySelector('i');
+        const orig = icon.className;
+        icon.className = 'fas fa-check';
+        btn.classList.add('btn-acceso-copied');
+        setTimeout(() => {
+            icon.className = orig;
+            btn.classList.remove('btn-acceso-copied');
+        }, 1600);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(doFeedback);
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity  = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        doFeedback();
+    }
+}
+
+/**
+ * Alterna visibilidad de contraseña en el formulario
+ */
+function togglePasswordField(btn) {
+    const input = btn.closest('.input-group').querySelector('input');
+    const icon  = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type    = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type    = 'password';
+        icon.className = 'fas fa-eye';
+    }
 }
 
 /**
