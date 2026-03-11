@@ -3,7 +3,7 @@
 // ============================================
 
 // URL del Web App desplegado de Google Apps Script
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzcV7o_86qlxy0mtjg93knlv44VHy1MpKPAasc5Z35LaVochZutsVQUT7JheiIg5Fs0/exec"; // Tomar como referencia al archivo Código.js en el repositorio
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzJH_79LyP9D9RVVtY5pRLfQk4q6LSpv13DxylloHfhdHSIHy-8SkIVeavBJwN36Mk/exec"; // Tomar como referencia al archivo Código.js en el repositorio
 
 // Modo de desarrollo (usa datos de prueba cuando el backend no está configurado)
 const DEV_MODE = false;
@@ -20,6 +20,11 @@ let currentProyectoId = null;
 let adjuntosData = [];        // Array de adjuntos en el formulario
 let adjuntoIdCounter = 0;     // Contador para IDs únicos de adjuntos
 
+// Sesión activa
+let currentUser = null;    // Nombre del perfil activo (null = sin sesión)
+let isAdmin    = false;    // true = modo administrador sin restricciones
+let responsablesData = []; // Nombres cargados desde la hoja "Responsables"
+
 // ============================================
 // DATOS DE PRUEBA (para desarrollo sin backend)
 // ============================================
@@ -29,16 +34,16 @@ const datosDemo = [
         id: '735709281',
         fechaCreacion: '15/3/2026',
         marca: 'IEmpresa',
-        responsable: 'Erick',
+        responsable: 'Erick | Scott',
         area: 'OSE',
         participantes: 'Roy',
         requerimiento: '<p>Crear un formulario que carece thoth etc etc conectado con bitrix</p>',
         comentarios: '<p>opcional</p>',
         nombreProyecto: '✅ Calendario Metoring',
         accesos: [
-            { titulo: 'Admin', valor: 'admin | Password: 123' },
-            { titulo: 'Cliente', valor: 'cliente | Password: 123' },
-            { titulo: 'OSE', valor: 'ose | Password: 123' }
+            { titulo: 'Admin', valor: 'admin | 123' },
+            { titulo: 'Cliente', valor: 'cliente | 123' },
+            { titulo: 'OSE', valor: 'ose | 123' }
         ],
         plataformas: [
             { titulo: 'Data', valor: 'https://baltic.bitrix24.es/crm/deal/category/272/' },
@@ -102,7 +107,7 @@ $(document).ready(function() {
     initQuillEditors();
     initDataTable();
     initEventListeners();
-    loadProyectos();
+    loadResponsablesAndShowLogin();
 });
 
 /**
@@ -140,10 +145,9 @@ function initDataTable() {
         language: {
             url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
         },
-        order: [[1, 'desc']],
+        order: [[0, 'desc']],
         pageLength: 10,
         columns: [
-            { data: 'id', width: '80px' },
             {
                 data: 'fechaCreacion',
                 width: '130px',
@@ -168,12 +172,13 @@ function initDataTable() {
             { data: 'area' },
             { 
                 data: 'estado',
-                render: function(data) {
+                render: function(data, type, row) {
                     let badgeClass = 'badge-en-proceso';
                     if (data === 'Terminado') badgeClass = 'badge-terminado';
                     if (data === 'Rechazado') badgeClass = 'badge-rechazado';
                     if (data === 'Observaciones') badgeClass = 'badge-observaciones';
-                    return `<span class="badge badge-estado ${badgeClass}">${data}</span>`;
+                    const fechaEst = row.fechaActualizacion ? `<br><span class="estado-fecha">${row.fechaActualizacion}</span>` : '';
+                    return `<span class="badge badge-estado ${badgeClass}">${data}</span>${fechaEst}`;
                 }
             },
             {
@@ -234,12 +239,259 @@ function initEventListeners() {
     // Limpiar formulario al cerrar modal
     $('#modalProyecto').on('hidden.bs.modal', limpiarFormulario);
 
+    // Toggle comentarios iniciales
+    $('#btnToggleComentarios').on('click', function() {
+        const $collapse = $('#comentariosCollapse');
+        const $icon = $('#iconToggleComentarios');
+        const isVisible = $collapse.is(':visible');
+        $collapse.toggle(!isVisible);
+        $icon.toggleClass('fa-chevron-right', isVisible).toggleClass('fa-chevron-down', !isVisible);
+    });
+
     // Marca y Área con opción "Otros" libre
     $('#marca').on('change', function() { toggleOtrosInput('marca', $(this).val()); });
     $('#area').on('change',  function() { toggleOtrosInput('area',  $(this).val()); });
 
-    // Inicializar módulo de adjuntos (drag & drop, paste, selección)
+    // Sincronizar radio buttons de Estado con el select oculto
+    $(document).on('change', 'input[name="estadoRadio"]', function() {
+        $('#estado').val($(this).val());
+        // Actualizar estilo visual de la opción activa
+        $('.estado-radio-option').removeClass('active');
+        $(this).closest('.estado-radio-option').addClass('active');
+    });
+
+    // Inicializar adjuntos (drag & drop, paste, selección)
     initAdjuntos();
+}
+
+// ============================================
+// LOGIN / SESIÓN
+// ============================================
+
+// Contraseña admin pre-cargada en paralelo
+let _cachedAdminPass = null;
+// Indica si los proyectos ya están cargados en caché
+let _proyectosCargados = false;
+
+/**
+ * Carga responsables, proyectos y password de admin en paralelo, luego muestra login.
+ * Los proyectos se guardan en caché para no recargarlos al cambiar de perfil.
+ */
+async function loadResponsablesAndShowLogin() {
+    if (DEV_MODE || APPS_SCRIPT_URL === 'TU_URL_DE_APPS_SCRIPT_AQUI') {
+        responsablesData  = ['Erick', 'Scott', 'Luigui', 'Mayra'];
+        _cachedAdminPass  = 'admin123';
+        // Simular datos de demo
+        proyectosData     = datosDemo;
+        _proyectosCargados = true;
+        showLoginScreen();
+        return;
+    }
+
+    showLoading(true);
+    try {
+        // Cargar todo en paralelo para minimizar tiempo de espera
+        const [respResp, respPass, respProyectos] = await Promise.allSettled([
+            fetch(`${APPS_SCRIPT_URL}?action=getResponsables`).then(r => r.json()),
+            fetch(`${APPS_SCRIPT_URL}?action=getPassword`).then(r => r.json()),
+            fetch(`${APPS_SCRIPT_URL}?action=getProyectos`).then(r => r.json())
+        ]);
+
+        // Responsables
+        if (respResp.status === 'fulfilled' && respResp.value.success) {
+            responsablesData = respResp.value.data || [];
+        } else {
+            responsablesData = [];
+        }
+
+        // Password admin
+        if (respPass.status === 'fulfilled' && respPass.value.success) {
+            _cachedAdminPass = respPass.value.data;
+        }
+
+        // Proyectos en caché
+        if (respProyectos.status === 'fulfilled' && respProyectos.value.success) {
+            proyectosData      = respProyectos.value.data || [];
+            _proyectosCargados  = true;
+        }
+    } catch (e) {
+        console.error('Error en carga inicial:', e);
+    } finally {
+        showLoading(false);
+    }
+    showLoginScreen();
+}
+
+/**
+ * Devuelve un gradiente consistente para el avatar según el nombre.
+ */
+function getAvatarGradient(name) {
+    const gradients = [
+        ['#2563eb', '#0ea5e9'],
+        ['#7c3aed', '#a78bfa'],
+        ['#059669', '#34d399'],
+        ['#d97706', '#fbbf24'],
+        ['#dc2626', '#f87171'],
+        ['#0891b2', '#38bdf8'],
+        ['#db2777', '#f9a8d4'],
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+    const g = gradients[hash % gradients.length];
+    return `linear-gradient(135deg, ${g[0]}, ${g[1]})`;
+}
+
+/**
+ * Muestra el overlay de selección de perfil.
+ */
+function showLoginScreen() {
+    const cards = responsablesData.map(name => {
+        const initials = name.split(' ').map(w => w[0] || '').join('').substring(0, 2).toUpperCase();
+        const gradient = getAvatarGradient(name);
+        return `
+            <div class="login-perfil-card" onclick="selectProfile('${escHtml(name)}')">
+                <div class="login-perfil-avatar" style="background:${gradient}">${initials}</div>
+                <div class="login-perfil-name">${escHtml(name)}</div>
+            </div>`;
+    }).join('');
+    $('#loginPerfiles').html(cards);
+    $('#loginOverlay').addClass('show');
+}
+
+/**
+ * Selecciona un perfil de usuario normal y arranca la app.
+ */
+function selectProfile(name) {
+    currentUser = name;
+    isAdmin     = false;
+    finishLogin();
+}
+
+/**
+ * Acceso administrador: usa la contraseña pre-cargada al inicio.
+ * Si aún no está disponible, hace el fetch en ese momento.
+ */
+async function loginAsAdmin() {
+    // Usar contraseña ya pre-cargada; si falta, obtenerla ahora
+    let adminPass = _cachedAdminPass || 'admin123';
+    if (!_cachedAdminPass && !DEV_MODE && APPS_SCRIPT_URL !== 'TU_URL_DE_APPS_SCRIPT_AQUI') {
+        try {
+            const resp   = await fetch(`${APPS_SCRIPT_URL}?action=getPassword`);
+            const result = await resp.json();
+            if (result.success) {
+                adminPass        = result.data;
+                _cachedAdminPass = result.data;
+            }
+        } catch (e) {
+            console.error('Error obteniendo contraseña admin:', e);
+        }
+    }
+
+    const { value: inputPass } = await Swal.fire({
+        title            : 'Acceso restringido',
+        input            : 'password',
+        inputPlaceholder : 'Contraseña de administrador',
+        showCancelButton : true,
+        confirmButtonText: 'Ingresar',
+        cancelButtonText : 'Cancelar',
+        confirmButtonColor: '#1d4ed8',
+        cancelButtonColor : '#64748b',
+        width            : '340px',
+        buttonsStyling   : true,
+        showClass        : { popup: '' },
+        hideClass        : { popup: '' },
+        customClass      : { popup: 'admin-pass-popup', title: 'admin-pass-title', input: 'admin-pass-input' },
+        inputAttributes  : { autocomplete: 'new-password', spellcheck: 'false' }
+    });
+
+    if (inputPass === undefined) return; // cancelado
+
+    if (inputPass === adminPass) {
+        currentUser = null;
+        isAdmin     = true;
+        finishLogin();
+    } else {
+        Swal.fire({
+            icon             : 'error',
+            title            : 'Contraseña incorrecta',
+            showConfirmButton : false,
+            timer            : 1600,
+            width            : '300px',
+            showClass        : { popup: '' },
+            hideClass        : { popup: '' }
+        });
+    }
+}
+
+/**
+ * Finaliza el login: configura UI y muestra la app.
+ * Si los proyectos ya están en caché no los vuelve a pedir al servidor.
+ */
+function finishLogin() {
+    populateFormResponsable();
+    updateNavUser();
+    $('#loginOverlay').removeClass('show');
+    if (_proyectosCargados) {
+        // Datos ya disponibles: solo actualizar stats/filtros/tabla
+        updateStats();
+        populateFilters();
+        aplicarFiltros();
+    } else {
+        loadProyectos();
+    }
+}
+
+/**
+ * Rellena dinámicamente el <select id="responsable"> con los nombres de la hoja.
+ */
+function populateFormResponsable() {
+    const $sel = $('#responsable');
+    $sel.empty();
+    responsablesData.forEach(name => {
+        $sel.append(`<option value="${escHtml(name)}">${escHtml(name)}</option>`);
+    });
+}
+
+/**
+ * Actualiza el indicador de usuario en la navbar.
+ */
+function updateNavUser() {
+    if (isAdmin) {
+        $('#navUserName').text('Administrador');
+        $('#navAdminBadge').removeClass('d-none');
+    } else {
+        $('#navUserName').text(currentUser);
+        $('#navAdminBadge').addClass('d-none');
+    }
+    $('#navUserInfo').removeClass('d-none');
+}
+
+/**
+ * Vuelve a la pantalla de selección de perfil.
+ * NO recarga proyectos: los datos ya están en caché.
+ */
+function cambiarPerfil() {
+    currentUser = null;
+    isAdmin     = false;
+    $('#navUserInfo').addClass('d-none');
+    showLoginScreen();
+    // Nota: al seleccionar perfil, finishLogin() usará _proyectosCargados=true
+    // y solo re-aplicará filtros, sin petición al servidor.
+}
+
+/**
+ * Aplica las restricciones de UI según el perfil activo (bloquea filtro de responsable).
+ */
+function applyUserRestrictions() {
+    if (!isAdmin && currentUser) {
+        $('#filterResponsable').val(currentUser).prop('disabled', true);
+        $('#filterResponsableLabel').html(
+            `Mi perfil <i class="fas fa-lock ms-1 text-muted" style="font-size:0.65rem" title="Filtro bloqueado a tu perfil"></i>`
+        );
+    } else {
+        $('#filterResponsable').prop('disabled', false).val('');
+        $('#filterResponsableLabel').text('Filtrar por Responsable');
+    }
 }
 
 // ============================================
@@ -256,9 +508,9 @@ function loadProyectos() {
         // Usar datos de demostración
         setTimeout(() => {
             proyectosData = datosDemo;
-            renderProyectos();
             updateStats();
             populateFilters();
+            aplicarFiltros();
             showLoading(false);
         }, 800);
         return;
@@ -271,10 +523,11 @@ function loadProyectos() {
         data: { action: 'getProyectos' },
         success: function(response) {
             if (response.success) {
-                proyectosData = response.data;
-                renderProyectos();
+                proyectosData      = response.data;
+                _proyectosCargados  = true;
                 updateStats();
                 populateFilters();
+                aplicarFiltros();
             } else {
                 showError('Error al cargar proyectos: ' + response.message);
             }
@@ -306,6 +559,10 @@ function nuevoProyecto() {
     $('#modalProyectoTitle').text('Nuevo Proyecto');
     $('#proyectoId').val('');
     limpiarFormulario();
+    // Pre-seleccionar el perfil activo como responsable por defecto
+    if (!isAdmin && currentUser) {
+        $('#responsable').val([currentUser]);
+    }
     $('#modalProyecto').modal('show');
 }
 
@@ -325,9 +582,16 @@ function editarProyecto(id) {
     
     // Llenar campos básicos
     $('#nombreProyecto').val(proyecto.nombreProyecto);
-    $('#responsable').val(proyecto.responsable);
+    // Responsable: soporte multi (separado por " | ")
+    const responsables = (proyecto.responsable || '').split(' | ').map(r => r.trim()).filter(Boolean);
+    $('#responsable').val(responsables);
     $('#participantes').val(proyecto.participantes);
     $('#estado').val(proyecto.estado);
+    // Sincronizar radio buttons con el estado cargado
+    $('input[name="estadoRadio"]').prop('checked', false);
+    $(`input[name="estadoRadio"][value="${proyecto.estado}"]`).prop('checked', true);
+    $('.estado-radio-option').removeClass('active');
+    $(`input[name="estadoRadio"][value="${proyecto.estado}"]`).closest('.estado-radio-option').addClass('active');
     $('#comentariosEstado').val(proyecto.comentariosEstado);
 
     // Marca – soporte de opción libre
@@ -355,6 +619,14 @@ function editarProyecto(id) {
     // Llenar editores Quill
     quillRequerimiento.root.innerHTML = proyecto.requerimiento || '';
     quillComentarios.root.innerHTML = proyecto.comentarios || '';
+    // Mostrar comentarios si tienen contenido
+    if (proyecto.comentarios && proyecto.comentarios.replace(/<[^>]*>/g, '').trim()) {
+        $('#comentariosCollapse').show();
+        $('#iconToggleComentarios').removeClass('fa-chevron-right').addClass('fa-chevron-down');
+    } else {
+        $('#comentariosCollapse').hide();
+        $('#iconToggleComentarios').removeClass('fa-chevron-down').addClass('fa-chevron-right');
+    }
     
     // Llenar campos dinámicos (accesos y plataformas)
     $('#accesosContainer').empty();
@@ -409,14 +681,25 @@ async function guardarProyecto() {
         return;
     }
 
+    // Validar responsable multi-select
+    const responsablesSeleccionados = Array.from($('#responsable')[0].selectedOptions).map(o => o.value);
+    if (responsablesSeleccionados.length === 0) {
+        showError('Por favor selecciona al menos un responsable.');
+        // Ir a la primera pestaña
+        $('#tab-general-btn').tab('show');
+        return;
+    }
+
     // Validar campos "Otros" si están activos
     if ($('#marca').val() === 'Otros' && !$('#marcaOtros').val().trim()) {
         showError('Por favor escribe el nombre de la marca.');
+        $('#tab-general-btn').tab('show');
         $('#marcaOtros').focus();
         return;
     }
     if ($('#area').val() === 'Otros' && !$('#areaOtros').val().trim()) {
         showError('Por favor escribe el nombre del área.');
+        $('#tab-general-btn').tab('show');
         $('#areaOtros').focus();
         return;
     }
@@ -427,7 +710,7 @@ async function guardarProyecto() {
             proyectosData.find(p => p.id === $('#proyectoId').val())?.fechaCreacion : 
             formatDate(new Date()),
         marca: getMarcaValue(),
-        responsable: $('#responsable').val(),
+        responsable: Array.from($('#responsable')[0].selectedOptions).map(o => o.value).join(' | '),
         area: getAreaValue(),
         participantes: $('#participantes').val(),
         requerimiento: quillRequerimiento.root.innerHTML,
@@ -561,12 +844,17 @@ function verProyecto(id) {
     
     let plataformasHtml = '';
     if (proyecto.plataformas && proyecto.plataformas.length > 0) {
-        plataformasHtml = `<div class="plataforma-grid">${proyecto.plataformas.map(p => `
+        plataformasHtml = `<div class="plataforma-grid">${proyecto.plataformas.map((p, pi) => {
+            const urlEsc = p.valor.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+            return `
             <div class="plataforma-card">
                 <span class="plataforma-label">${p.titulo}</span>
-                <a class="plataforma-link" href="${p.valor}" target="_blank"><i class="fas fa-external-link-alt me-1"></i>${p.valor}</a>
-            </div>
-        `).join('')}</div>`;
+                <div class="d-flex align-items-center gap-2">
+                    <a class="plataforma-link" href="${p.valor}" target="_blank"><i class="fas fa-external-link-alt me-1"></i>${p.valor}</a>
+                    <button type="button" class="btn-acceso-action" data-v="${urlEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar URL"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>`;
+        }).join('')}</div>`;
     } else {
         plataformasHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay plataformas registradas</p>';
     }
@@ -659,7 +947,7 @@ function verProyecto(id) {
                             </div>
                             <hr>
                             <div class="detalle-meta-row">
-                                <span class="detalle-meta-label">Última actualización</span>
+                                <span class="detalle-meta-label"><i class="fas fa-calendar-check me-1 text-warning"></i>Fecha de cambio de estado</span>
                                 <span class="detalle-meta-value">${proyecto.fechaActualizacion || '-'}</span>
                             </div>
                             ${proyecto.comentariosEstado ? `
@@ -810,6 +1098,12 @@ function actualizarVisibilidadNoItems() {
  */
 function limpiarFormulario() {
     $('#formProyecto')[0].reset();
+    // Resetear radio buttons de estado
+    $('input[name="estadoRadio"]').prop('checked', false);
+    $('input[name="estadoRadio"][value="En proceso"]').prop('checked', true);
+    $('.estado-radio-option').removeClass('active');
+    $('input[name="estadoRadio"][value="En proceso"]').closest('.estado-radio-option').addClass('active');
+    $('#estado').val('En proceso');
     quillRequerimiento.root.innerHTML = '';
     quillComentarios.root.innerHTML = '';
     $('#accesosContainer').empty();
@@ -819,56 +1113,66 @@ function limpiarFormulario() {
     actualizarVisibilidadNoItems();
     currentProyectoId = null;
     $('#marcaOtrosDiv, #areaOtrosDiv').hide().find('input').val('');
+    // Ocultar comentarios y resetear
+    $('#comentariosCollapse').hide();
+    $('#iconToggleComentarios').removeClass('fa-chevron-down').addClass('fa-chevron-right');
+    // Resetear responsable multi-select
+    $('#responsable option').prop('selected', false);
+    // Volver a la primera pestaña
+    $('#tab-general-btn').tab('show');
 }
 
 /**
  * Actualiza las estadísticas
  */
 function updateStats() {
-    const total = proyectosData.length;
-    const enProceso = proyectosData.filter(p => p.estado === 'En proceso').length;
-    const terminados = proyectosData.filter(p => p.estado === 'Terminado').length;
-    const observaciones = proyectosData.filter(p => p.estado === 'Observaciones').length;
-    const rechazados = proyectosData.filter(p => p.estado === 'Rechazado').length;
-    
-    $('#statTotal').text(total);
-    $('#statEnProceso').text(enProceso);
-    $('#statTerminados').text(terminados);
-    $('#statObservaciones').text(observaciones);
-    $('#statRechazados').text(rechazados);
+    // Para no-admin, las estadísticas reflejan solo sus proyectos
+    const statsData = (!isAdmin && currentUser)
+        ? proyectosData.filter(p =>
+            (p.responsable || '').split(' | ').map(r => r.trim()).includes(currentUser))
+        : proyectosData;
+
+    $('#statTotal').text(statsData.length);
+    $('#statEnProceso').text(statsData.filter(p => p.estado === 'En proceso').length);
+    $('#statTerminados').text(statsData.filter(p => p.estado === 'Terminado').length);
+    $('#statObservaciones').text(statsData.filter(p => p.estado === 'Observaciones').length);
+    $('#statRechazados').text(statsData.filter(p => p.estado === 'Rechazado').length);
 }
 
 /**
  * Popula los filtros con valores únicos
  */
 function populateFilters() {
-    // Marcas
-    const marcas = [...new Set(proyectosData.map(p => p.marca))];
+    // Marcas (desde los datos reales)
+    const marcas = [...new Set(proyectosData.map(p => p.marca).filter(Boolean))];
     const filterMarca = $('#filterMarca');
     filterMarca.find('option:not(:first)').remove();
     marcas.forEach(marca => {
         filterMarca.append(`<option value="${marca}">${marca}</option>`);
     });
-    
-    // Responsables
-    const responsables = [...new Set(proyectosData.map(p => p.responsable))];
+
+    // Responsables desde la hoja "Responsables" (no desde los datos de proyectos)
     const filterResponsable = $('#filterResponsable');
     filterResponsable.find('option:not(:first)').remove();
-    responsables.forEach(resp => {
-        filterResponsable.append(`<option value="${resp}">${resp}</option>`);
+    responsablesData.forEach(name => {
+        filterResponsable.append(`<option value="${name}">${name}</option>`);
     });
+
+    // Bloquear / desbloquear según perfil
+    applyUserRestrictions();
 }
 
 /**
  * Aplica los filtros a la tabla
  */
 function aplicarFiltros() {
-    const marca = $('#filterMarca').val();
+    const marca  = $('#filterMarca').val();
     const estado = $('#filterEstado').val();
-    const responsable = $('#filterResponsable').val();
-    
+    // Para no-admin, siempre usar su propio perfil como filtro de responsable
+    const responsable = (!isAdmin && currentUser) ? currentUser : $('#filterResponsable').val();
+
     let filteredData = proyectosData;
-    
+
     if (marca) {
         filteredData = filteredData.filter(p => p.marca === marca);
     }
@@ -876,9 +1180,11 @@ function aplicarFiltros() {
         filteredData = filteredData.filter(p => p.estado === estado);
     }
     if (responsable) {
-        filteredData = filteredData.filter(p => p.responsable === responsable);
+        filteredData = filteredData.filter(p =>
+            (p.responsable || '').split(' | ').map(r => r.trim()).includes(responsable)
+        );
     }
-    
+
     dataTable.clear();
     dataTable.rows.add(filteredData);
     dataTable.draw();
@@ -995,7 +1301,7 @@ function renderAdjuntosDetalle(imagenes) {
         return `
             <div class="adjunto-detalle-card" onclick="expandDetalleAdjunto(${i})" title="${escHtml(a.titulo)}">
                 <div class="adjunto-detalle-thumb">${thumb}</div>
-                <div class="adjunto-detalle-label">${escHtml(a.titulo)}</div>
+                <div class="adjunto-detalle-label adjunto-hover-label">${escHtml(a.titulo)}</div>
             </div>`;
     });
     return `<div class="adjuntos-detalle-grid">${cards.join('')}</div>`;
@@ -1233,7 +1539,7 @@ function expandAdjunto(a) {
         const imgUrl = a.thumbnailUrl || a.thumbnail || a.valor;
         const viewUrl = a.viewUrl || getDriveViewUrl(a.valor);
         Swal.fire({
-            title           : a.titulo,
+            title           : '',
             imageUrl        : imgUrl,
             imageAlt        : a.titulo,
             showConfirmButton: false,
