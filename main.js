@@ -179,30 +179,53 @@ function initDataTable() {
                     if (data === 'Terminado') badgeClass = 'badge-terminado';
                     if (data === 'Rechazado') badgeClass = 'badge-rechazado';
                     if (data === 'Observaciones') badgeClass = 'badge-observaciones';
-                    const fechaEst = row.fechaActualizacion ? `<br><span class="estado-fecha">${row.fechaActualizacion}</span>` : '';
-                    return `<span class="badge badge-estado ${badgeClass}">${data}</span>${fechaEst}`;
-                }
-            },
-            {
-                data: null,
-                orderable: false,
-                render: function (data, type, row) {
+                    const fechaEst = row.fechaActualizacion ? `<br><span class="estado-fecha" style="font-size: 0.70em;">${row.fechaActualizacion}</span>` : '';
+
+                    // Contenedor de acciones flotantes
+                    const accionesHtml = `
+                    <div class="row-actions-floating" onclick="event.stopPropagation();">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border btn-action-more shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones">
+                                <i class="fas fa-ellipsis-v text-secondary"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" style="font-size: 0.85rem; z-index: 1050;">
+                                <li>
+                                    <a class="dropdown-item dropdown-item-edit fw-medium d-flex align-items-center py-2" href="#" onclick="event.stopPropagation(); editarProyecto('${row.id}'); return false;">
+                                        <i class="fas fa-edit text-primary me-2" style="width: 16px;"></i>Editar Proyecto
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item dropdown-item-delete fw-medium d-flex align-items-center py-2 text-danger" href="#" onclick="event.stopPropagation(); eliminarProyecto('${row.id}'); return false;">
+                                        <i class="fas fa-trash-alt me-2" style="width: 16px;"></i>Eliminar Proyecto
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>`;
+
                     return `
-                        <div class="d-flex">
-                            <button class="btn btn-info btn-action" onclick="verProyecto('${row.id}')" title="Ver detalle">
-                                <i class="fas fa-eye text-white"></i>
-                            </button>
-                            <button class="btn btn-warning btn-action" onclick="editarProyecto('${row.id}')" title="Editar">
-                                <i class="fas fa-edit text-white"></i>
-                            </button>
-                            <button class="btn btn-danger btn-action" onclick="eliminarProyecto('${row.id}')" title="Eliminar">
-                                <i class="fas fa-trash text-white"></i>
-                            </button>
+                        <div class="position-relative d-flex align-items-center justify-content-between h-100" style="min-height: 48px;">
+                            <div>
+                                <span class="badge badge-estado ${badgeClass}">${data}</span>${fechaEst}
+                            </div>
+                            ${accionesHtml}
                         </div>
                     `;
                 }
             }
-        ]
+        ],
+        createdRow: function (row, data, dataIndex) {
+            $(row).addClass('clickable-row position-relative');
+            $(row).css('cursor', 'pointer');
+            $(row).attr('title', 'Da clic para ver el detalle');
+            $(row).on('click', function (e) {
+                // Prevenir que el click se propague si se hizo clic en un enlace o botón dentro de la fila
+                if (!$(e.target).closest('a, button, .dropdown-menu, .row-actions-floating').length) {
+                    verProyecto(data.id);
+                }
+            });
+        }
     });
 }
 
@@ -272,6 +295,49 @@ function initEventListeners() {
         const id = $(this).data('id');
         verProyecto(id);
     });
+
+    // ===== Fix Definitivo: Dropdown en tabla (escapar stacking context) =====
+    // Al abrir el dropdown, lo "teleportamos" al <body> para que quede libre
+    // de cualquier overflow:hidden o transform que cree un stacking context.
+    $(document).on('show.bs.dropdown', '#tablaProyectos .dropdown', function () {
+        const $dropdown = $(this);
+        const $toggle = $dropdown.find('[data-bs-toggle="dropdown"]');
+        const $menu = $dropdown.find('.dropdown-menu');
+        const rect = $toggle[0].getBoundingClientRect();
+
+        // Guardar referencia al padre original para restaurar después
+        $menu.data('dropdown-original-parent', $dropdown);
+
+        // Mover al body para escapar stacking contexts
+        $('body').append($menu);
+
+        $menu.css({
+            position: 'fixed',
+            top: (rect.bottom + 4) + 'px',
+            right: (window.innerWidth - rect.right) + 'px',
+            left: 'auto',
+            zIndex: 99999,
+            display: 'block',
+            margin: '0'
+        });
+    });
+
+    // Restaurar el dropdown a su posición original al cerrar
+    $(document).on('hide.bs.dropdown', '#tablaProyectos .dropdown', function () {
+        const $dropdown = $(this);
+        // Buscar el menú en el body (puede que ya esté ahí)
+        const $menu = $('body > .dropdown-menu').filter(function () {
+            return $(this).data('dropdown-original-parent') && $(this).data('dropdown-original-parent').is($dropdown);
+        });
+
+        if ($menu.length) {
+            $menu.css({ position: '', top: '', right: '', left: '', zIndex: '', display: '', margin: '' });
+            $dropdown.append($menu);
+            $menu.removeData('dropdown-original-parent');
+        }
+    });
+
+
 
     // Editar desde modal detalle
     $('#btnEditarDesdeDetalle').on('click', function () {
@@ -710,7 +776,7 @@ function updateModalSaveButtonState() {
     } else {
         // Mantener bootstrap consistent colors pero cambiar contenido
         $btn.html('Siguiente <i class="fas fa-chevron-right ms-1"></i>');
-        $btn.removeClass('btn-primary').addClass('btn-info text-white');
+        $btn.removeClass('btn-secondary').addClass('btn-info text-white');
     }
 }
 
@@ -780,6 +846,11 @@ function nuevoProyecto() {
     $('#proyectoId').val('');
     limpiarFormulario();
     // perfil activo ya se maneja fuera del select cuando no es admin
+
+    // Activa la primera pestaña al abrir modal
+    $('#tab-general-btn').tab('show');
+    updateModalSaveButtonState();
+
     $('#modalProyecto').modal('show');
 }
 
@@ -1000,16 +1071,49 @@ function verProyecto(id) {
     }
 
     currentProyectoId = id;
-    $('#modalDetalleTitle').text(proyecto.nombreProyecto);
 
+    // Status Badge in Header
     let estadoBadge = 'badge-en-proceso';
     if (proyecto.estado === 'Terminado') estadoBadge = 'badge-terminado';
     if (proyecto.estado === 'Rechazado') estadoBadge = 'badge-rechazado';
     if (proyecto.estado === 'Observaciones') estadoBadge = 'badge-observaciones';
 
+    $('#modalDetalleTitle').html(`${proyecto.nombreProyecto} <span class="badge badge-estado ${estadoBadge} ms-3 fs-6 align-middle" style="letter-spacing: normal; padding: 0.35em 0.8em;">${proyecto.estado}</span>`);
+
+    // Plataformas Compact Card list
+    let plataformasHtml = '';
+    if (proyecto.plataformas && proyecto.plataformas.length > 0) {
+        plataformasHtml = `<div class="d-flex flex-column gap-2">${proyecto.plataformas.map((p, pi) => {
+            const urlEsc = p.valor.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            return `
+            <div class="d-flex align-items-center justify-content-between border rounded p-2 shadow-sm bg-white" style="transition: all 0.2s;">
+                <div class="d-flex align-items-center overflow-hidden w-100 me-2">
+                    <span class="fw-bold text-primary me-3 text-truncate" style="min-width: 120px; font-size: 0.85rem;">${p.titulo}</span>
+                    <a class="text-truncate flex-grow-1 text-decoration-none" href="${p.valor}" target="_blank" title="${p.valor}" style="font-size: 0.85rem; color: #475569;"><i class="fas fa-external-link-alt me-1 text-muted"></i>${p.valor}</a>
+                </div>
+                <button type="button" class="btn btn-sm btn-light border btn-acceso-action flex-shrink-0" data-v="${urlEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar URL">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>`;
+        }).join('')}</div>`;
+    } else {
+        plataformasHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay plataformas registradas</p>';
+    }
+
+    // Accesos Compact Table
     let accesosHtml = '';
     if (proyecto.accesos && proyecto.accesos.length > 0) {
-        accesosHtml = `<div class="acceso-grid">${proyecto.accesos.map((a, idx) => {
+        accesosHtml = `<div class="table-responsive border rounded bg-white shadow-sm mb-0">
+            <table class="table table-sm table-hover mb-0 align-middle compact-table">
+                <thead class="bg-light text-muted" style="font-size: 0.75rem; text-transform: uppercase;">
+                    <tr>
+                        <th class="ps-3 border-bottom-0 py-2">Plataforma</th>
+                        <th class="border-bottom-0 py-2">Usuario</th>
+                        <th class="border-bottom-0 py-2 pe-3 text-end">Contraseña</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${proyecto.accesos.map((a, idx) => {
             const partes = (a.valor || '').split(' | ');
             const usuario = partes[0] ? partes[0].trim() : '';
             const pass = partes.slice(1).join(' | ').trim();
@@ -1017,147 +1121,130 @@ function verProyecto(id) {
             const uEsc = usuario.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             const pEsc = pass.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             return `
-            <div class="acceso-card">
-                <div class="acceso-title-bar">
-                    <i class="fas fa-key me-2"></i>${a.titulo}
-                </div>
-                <div class="acceso-fields">
-                    <div class="acceso-field-row">
-                        <span class="acceso-field-label"><i class="fas fa-user me-1"></i>Usuario</span>
-                        <div class="acceso-field-value-wrap">
-                            <code class="acceso-field-value">${usuario || '-'}</code>
-                            ${usuario ? `<button type="button" class="btn-acceso-action" data-v="${uEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar usuario"><i class="fas fa-copy"></i></button>` : ''}
-                        </div>
-                    </div>
-                    <div class="acceso-field-row">
-                        <span class="acceso-field-label"><i class="fas fa-lock me-1"></i>Contraseña</span>
-                        <div class="acceso-field-value-wrap">
-                            <code class="acceso-field-value pass-hidden" id="${uid}" data-pass="${pEsc}">${pass ? '••••••••' : '-'}</code>
-                            ${pass ? `
-                            <button type="button" class="btn-acceso-action btn-toggle-pass" data-target="${uid}" onclick="toggleAccesoPassword(this)" title="Ver/ocultar contraseña"><i class="fas fa-eye"></i></button>
-                            <button type="button" class="btn-acceso-action" data-target="${uid}" onclick="copiarPassSpan(this)" title="Copiar contraseña"><i class="fas fa-copy"></i></button>` : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        }).join('')}</div>`;
+                    <tr>
+                        <td class="ps-3 fw-semibold text-dark" style="width: 25%; font-size: 0.85rem; padding-top: 0.6rem; padding-bottom: 0.6rem;">${a.titulo}</td>
+                        <td style="width: 35%; padding-top: 0.6rem; padding-bottom: 0.6rem;">
+                            <div class="d-flex align-items-center justify-content-between bg-light rounded px-2 py-1 mx-1">
+                                <code class="text-dark bg-transparent p-0 flex-grow-1 text-truncate" style="font-size: 0.8rem;">${usuario || '-'}</code>
+                                ${usuario ? `<button type="button" class="btn btn-sm text-secondary bg-white border rounded ms-2 py-0 px-1 copy-btn copy-hover" data-v="${uEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar usuario" style="min-width: 26px; min-height: 26px; display: inline-flex; align-items: center; justify-content: center;"><i class="fas fa-copy" style="font-size: 0.8rem;"></i></button>` : ''}
+                            </div>
+                        </td>
+                        <td class="pe-3" style="width: 40%; padding-top: 0.6rem; padding-bottom: 0.6rem;">
+                            <div class="d-flex align-items-center justify-content-end bg-light rounded px-2 py-1 mx-1 ms-auto">
+                                <code class="text-dark bg-transparent p-0 text-start text-truncate pass-hidden me-auto" id="${uid}" data-pass="${pEsc}" style="font-size: 0.8rem; letter-spacing: 1px;">${pass ? '••••••••' : '-'}</code>
+                                ${pass ? `
+                                <div class="d-flex ms-2 gap-1 flex-shrink-0">
+                                    <button type="button" class="btn btn-sm text-secondary bg-white border rounded py-0 px-1 copy-btn copy-hover" data-target="${uid}" onclick="toggleAccesoPassword(this)" title="Ver/ocultar" style="min-width: 26px; min-height: 26px; display: inline-flex; align-items: center; justify-content: center;"><i class="fas fa-eye" style="font-size: 0.8rem;"></i></button>
+                                    <button type="button" class="btn btn-sm text-secondary bg-white border rounded py-0 px-1 copy-btn copy-hover" data-target="${uid}" onclick="copiarPassSpan(this)" title="Copiar contraseña" style="min-width: 26px; min-height: 26px; display: inline-flex; align-items: center; justify-content: center;"><i class="fas fa-copy" style="font-size: 0.8rem;"></i></button>
+                                </div>` : ''}
+                            </div>
+                        </td>
+                    </tr>`;
+        }).join('')}
+                </tbody>
+            </table>
+        </div>`;
     } else {
         accesosHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay accesos registrados</p>';
-    }
-
-    let plataformasHtml = '';
-    if (proyecto.plataformas && proyecto.plataformas.length > 0) {
-        plataformasHtml = `<div class="plataforma-grid">${proyecto.plataformas.map((p, pi) => {
-            const urlEsc = p.valor.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-            return `
-            <div class="plataforma-card">
-                <span class="plataforma-label">${p.titulo}</span>
-                <div class="d-flex align-items-center gap-2">
-                    <a class="plataforma-link" href="${p.valor}" target="_blank"><i class="fas fa-external-link-alt me-1"></i>${p.valor}</a>
-                    <button type="button" class="btn-acceso-action" data-v="${urlEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar URL"><i class="fas fa-copy"></i></button>
-                </div>
-            </div>`;
-        }).join('')}</div>`;
-    } else {
-        plataformasHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay plataformas registradas</p>';
     }
 
     const imagenesHtml = renderAdjuntosDetalle(proyecto.imagenes);
 
     const html = `
         <div class="detalle-proyecto">
-
-            <!-- Info general del proyecto -->
-            <div class="detalle-info-grid mb-4">
-                ${proyecto.marca ? `
-                <div class="detalle-info-item">
-                    <span class="detalle-info-label"><i class="fas fa-tag me-1"></i>Marca</span>
-                    <span class="detalle-info-value" style="font-size: 1.1em;">${getMarcaBadgeHtml(proyecto.marca)}</span>
-                </div>` : ''}
-                <div class="detalle-info-item">
-                    <span class="detalle-info-label"><i class="fas fa-user me-1"></i>Responsable</span>
-                    <div class="mt-1">${getResponsablesBadgesHtml(proyecto.responsable)}</div>
-                </div>
-                <div class="detalle-info-item">
-                    <span class="detalle-info-label"><i class="fas fa-building me-1"></i>Área</span>
-                    <span class="detalle-info-value">${proyecto.area}</span>
-                </div>
-                ${proyecto.participantes ? `
-                <div class="detalle-info-item">
-                    <span class="detalle-info-label"><i class="fas fa-users me-1"></i>Participantes</span>
-                    <span class="detalle-info-value">${proyecto.participantes}</span>
-                </div>` : ''}
-                <div class="detalle-info-item">
-                    <span class="detalle-info-label"><i class="fas fa-calendar-plus me-1"></i>Creado</span>
-                    <span class="detalle-info-value">${proyecto.fechaCreacion}</span>
-                </div>
-                <div class="detalle-info-item">
-                    <span class="detalle-info-label"><i class="fas fa-hashtag me-1"></i>ID</span>
-                    <span class="detalle-info-value text-muted">${proyecto.id}</span>
-                </div>
-            </div>
-
             <div class="row g-4">
+                
+                <!-- COLUMNA IZQUIERDA: Principal (70%) -->
                 <div class="col-lg-8">
-
+                    
                     <!-- Plataformas / URLs -->
-                    <div class="detail-section">
-                        <h6><i class="fas fa-globe me-2"></i>Plataformas / URLs</h6>
+                    <div class="detail-section mb-4">
+                        <h6 class="text-secondary section-title-compact" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-globe me-2 text-primary"></i>Plataformas / URLs</h6>
                         ${plataformasHtml}
                     </div>
 
-                    <!-- Accesos -->
-                    <div class="detail-section">
-                        <h6><i class="fas fa-key me-2"></i>Accesos</h6>
+                    <!-- Accesos y Credenciales -->
+                    <div class="detail-section mb-4">
+                        <h6 class="text-secondary section-title-compact" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-key me-2 text-primary"></i>Accesos y Credenciales</h6>
                         ${accesosHtml}
                     </div>
 
                     <!-- Requerimiento -->
-                    <div class="detail-section">
-                        <h6><i class="fas fa-file-alt me-2"></i>Requerimiento</h6>
-                        <div class="detalle-rich-content">
+                    <div class="detail-section mb-4">
+                        <h6 class="text-secondary section-title-compact" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-file-alt me-2 text-primary"></i>Requerimiento (Descripción)</h6>
+                        <div class="detalle-rich-content" style="padding: 0.8rem 1rem; border-left: 3px solid var(--primary-color);">
                             ${proyecto.requerimiento || '<em class="text-muted">Sin requerimiento especificado</em>'}
                         </div>
                     </div>
 
                     <!-- Imágenes / Documentos -->
-                    <div class="detail-section">
-                        <h6><i class="fas fa-images me-2"></i>Adjuntos</h6>
+                    <div class="detail-section mb-4">
+                        <h6 class="text-secondary section-title-compact" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-paperclip me-2 text-primary"></i>Archivos Adjuntos</h6>
                         ${imagenesHtml}
                     </div>
 
                     ${proyecto.comentarios ? `
+                    <!-- Comentarios -->
                     <div class="detail-section">
-                        <h6><i class="fas fa-comments me-2"></i>Comentarios</h6>
-                        <div class="detalle-rich-content">
+                        <h6 class="text-secondary section-title-compact" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-comments me-2 text-primary"></i>Comentarios extra</h6>
+                        <div class="detalle-rich-content" style="padding: 0.8rem 1rem; background: #fdfdfd;">
                             ${proyecto.comentarios}
                         </div>
                     </div>` : ''}
 
                 </div>
 
+                <!-- COLUMNA DERECHA: Secundaria Contexto (30%) -->
                 <div class="col-lg-4">
-                    <!-- Tarjeta de estado -->
-                    <div class="card border-0 shadow-sm detalle-estado-card">
-                        <div class="card-body">
-                            <p class="detalle-estado-titulo">Estado del Proyecto</p>
-                            <div class="text-center mb-3">
-                                <span class="badge badge-estado ${estadoBadge} detalle-estado-badge">${proyecto.estado}</span>
-                            </div>
-                            <hr>
-                            <div class="detalle-meta-row">
-                                <span class="detalle-meta-label"><i class="fas fa-calendar-check me-1 text-warning"></i>Fecha de cambio de estado</span>
-                                <span class="detalle-meta-value">${proyecto.fechaActualizacion || '-'}</span>
-                            </div>
-                            ${proyecto.comentariosEstado ? `
-                            <hr>
-                            <div class="detalle-meta-row">
-                                <span class="detalle-meta-label">Nota de estado</span>
-                                <span class="detalle-meta-value">${proyecto.comentariosEstado}</span>
-                            </div>` : ''}
+                    <div class="metadata-sidebar border rounded p-4 h-100 shadow-sm" style="background-color: #f8fafc !important; border-color: #e2e8f0;">
+                        <h6 class="text-secondary mb-4" style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;"><i class="fas fa-info-circle me-2"></i>Datos Generales</h6>
+                        
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">Marca</span>
+                            <span class="meta-value">${proyecto.marca ? getMarcaBadgeHtml(proyecto.marca) : '-'}</span>
                         </div>
+                        
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">Responsable(s)</span>
+                            <div class="meta-value mt-1">${getResponsablesBadgesHtml(proyecto.responsable)}</div>
+                        </div>
+
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">Área</span>
+                            <span class="meta-value fw-medium text-dark">${proyecto.area || '-'}</span>
+                        </div>
+
+                        ${proyecto.participantes ? `
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">Participantes</span>
+                            <span class="meta-value text-dark small">${proyecto.participantes}</span>
+                        </div>` : ''}
+
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">Fecha de creación</span>
+                            <span class="meta-value text-dark small"><i class="far fa-calendar-plus me-1 text-muted"></i>${proyecto.fechaCreacion || '-'}</span>
+                        </div>
+
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">Última modificación</span>
+                            <span class="meta-value text-dark small"><i class="far fa-calendar-check me-1 text-muted"></i>${proyecto.fechaActualizacion || '-'}</span>
+                        </div>
+                        
+                        <div class="meta-item mb-3">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;">ID de Proyecto</span>
+                            <span class="meta-value text-secondary font-monospace small">${proyecto.id}</span>
+                        </div>
+                        
+                        ${proyecto.comentariosEstado ? `
+                        <div class="meta-item mt-4 pt-3" style="border-top: 1px dashed #cbd5e1;">
+                            <span class="meta-label text-muted d-block small fw-bold mb-1" style="font-size: 0.75rem; text-transform: uppercase;"><i class="fas fa-history me-1"></i>Nota de estado</span>
+                            <div class="meta-value small text-dark p-2 rounded mt-2" style="background-color: #f1f5f9; border-left: 3px solid #94a3b8; font-size: 0.85rem;">
+                                ${proyecto.comentariosEstado}
+                            </div>
+                        </div>` : ''}
                     </div>
                 </div>
+
             </div>
         </div>
     `;

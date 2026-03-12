@@ -193,6 +193,91 @@ body {
     margin: 0 2px;
 }
 
+/* Custom Action Buttons (Datatable dropdown) */
+.btn-action-more {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.btn-action-more:hover,
+.btn-action-more[aria-expanded="true"] {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #334155;
+    box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+}
+
+.dropdown-item-edit:hover {
+    background-color: #f1f5f9 !important;
+}
+
+.dropdown-item-delete:hover {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+}
+
+/* Datatable Clickable Row (SaaS Style) */
+.custom-table tbody tr.clickable-row {
+    transition: background-color 0.2s ease;
+    position: relative;
+    /* Needed for z-index to work on <tr> */
+    z-index: 0;
+}
+
+/* Hovered row rises above sibling rows so dropdown is never clipped */
+.custom-table tbody tr.clickable-row:hover {
+    background-color: #f8fafc;
+    z-index: 20;
+    /* Higher than other rows */
+}
+
+/* Floating Actions Container: use top/bottom instead of transform */
+.row-actions-floating {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    /* NO transform: because CSS transforms create new stacking contexts that break z-index */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    padding-left: 30px;
+    padding-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    background: linear-gradient(90deg, transparent 0%, rgba(248, 250, 252, 0.95) 25%, #f8fafc 100%);
+    pointer-events: none;
+    z-index: 21;
+    /* Above the hovered row */
+}
+
+.custom-table tbody tr.clickable-row:hover .row-actions-floating,
+.row-actions-floating:focus-within {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Ensure dropdown menu always appears on top */
+.custom-table .dropdown-menu {
+    z-index: 9999 !important;
+    position: fixed !important;
+}
+
+/* Adjust datatable paddings for absolute actions */
+.custom-table td {
+    position: relative;
+}
+
 /* Form Controls */
 .form-control,
 .form-select {
@@ -621,6 +706,54 @@ body {
     color: #374151;
     margin-bottom: 0.35rem;
 }
+
+/* ─── Detail View (Refactorizado) ──────────────────────────────────────────── */
+
+.section-title-compact {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.copy-hover {
+    transition: all 0.2s ease;
+}
+
+.copy-hover:hover {
+    background-color: var(--primary-color) !important;
+    color: #fff !important;
+    border-color: var(--primary-color) !important;
+}
+
+.compact-table th {
+    font-weight: 700 !important;
+    color: #64748b !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.compact-table td {
+    vertical-align: middle;
+}
+
+/* Sidebar metadata items */
+.metadata-sidebar .meta-label {
+    letter-spacing: 0.4px;
+    color: #64748b !important;
+}
+
+.metadata-sidebar .meta-value {
+    color: #1e293b;
+    word-break: break-word;
+}
+
+/* ======================================================= */
+/* Legacy Detail View (to be overridden or ignored below)  */
+/* ======================================================= */
 
 /* ─── Detail View ──────────────────────────────────────────── */
 
