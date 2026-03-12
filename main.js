@@ -185,7 +185,7 @@ function initDataTable() {
                     const accionesHtml = `
                     <div class="row-actions-floating" onclick="event.stopPropagation();">
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-light border btn-action-more shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones">
+                            <button class="btn btn-sm btn-action-more" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones">
                                 <i class="fas fa-ellipsis-v text-secondary"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2" style="font-size: 0.85rem; z-index: 1050;">
@@ -1172,7 +1172,7 @@ function verProyecto(id) {
                     <!-- Requerimiento -->
                     <div class="detail-section mb-4">
                         <h6 class="text-secondary section-title-compact" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-file-alt me-2 text-primary"></i>Requerimiento (Descripción)</h6>
-                        <div class="detalle-rich-content" style="padding: 0.8rem 1rem; border-left: 3px solid var(--primary-color);">
+                        <div class="detalle-rich-content" style="padding: 0.8rem 1rem;">
                             ${proyecto.requerimiento || '<em class="text-muted">Sin requerimiento especificado</em>'}
                         </div>
                     </div>
