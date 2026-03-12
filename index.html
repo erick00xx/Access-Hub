@@ -1,41 +1,44 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión de Accesos a Proyectos</title>
-    
+
     <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
-    
+
     <!-- FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    
+
     <!-- Quill CSS -->
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-    
+
     <!-- SweetAlert2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-    
+
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-    
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet" />
+
     <!-- Custom CSS -->
     <link href="style.css" rel="stylesheet">
 </head>
+
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+    <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-xxl px-3">
             <a class="navbar-brand d-flex align-items-center" href="#">
                 <i class="fas fa-project-diagram me-2"></i>
@@ -60,11 +63,9 @@
 
                 <!-- Indicador de usuario activo -->
                 <div id="navUserInfo" class="d-flex align-items-center ms-3 d-none">
-                    <span id="navAdminBadge" class="badge bg-warning text-dark me-2 d-none">
-                        <i class="fas fa-shield-alt me-1"></i>Admin
-                    </span>
-                    <button id="btnCambiarPerfil" class="btn btn-sm btn-outline-light d-flex align-items-center gap-1"
-                            onclick="cambiarPerfil()" title="Cambiar perfil">
+                    <button id="btnCambiarPerfil"
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                        onclick="cambiarPerfil()" title="Cambiar perfil">
                         <i class="fas fa-user-circle"></i>
                         <span id="navUserName"></span>
                         <i class="fas fa-exchange-alt" style="font-size:0.6rem;opacity:0.7"></i>
@@ -178,7 +179,8 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-medium" id="filterResponsableLabel">Filtrar por Responsable</label>
+                            <label class="form-label fw-medium" id="filterResponsableLabel">Filtrar por
+                                Responsable</label>
                             <select class="form-select" id="filterResponsable">
                                 <option value="">Todos los responsables</option>
                             </select>
@@ -201,10 +203,10 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="tablaProyectos" class="table table-hover align-middle custom-table" style="width:100%">
+                        <table id="tablaProyectos" class="table table-hover align-middle custom-table"
+                            style="width:100%">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Fecha</th>
                                     <th>Proyecto</th>
                                     <th>Marca</th>
                                     <th>Responsable</th>
@@ -240,19 +242,19 @@
                     <ul class="nav nav-tabs modal-form-tabs" id="modalProyectoTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="tab-general-btn" data-bs-toggle="tab"
-                                    data-bs-target="#tab-general" type="button" role="tab">
+                                data-bs-target="#tab-general" type="button" role="tab">
                                 <i class="fas fa-info-circle me-1"></i>Datos Generales
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="tab-accesos-btn" data-bs-toggle="tab"
-                                    data-bs-target="#tab-accesos" type="button" role="tab">
+                                data-bs-target="#tab-accesos" type="button" role="tab">
                                 <i class="fas fa-key me-1"></i>Accesos y URLs
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="tab-estado-btn" data-bs-toggle="tab"
-                                    data-bs-target="#tab-estado" type="button" role="tab">
+                                data-bs-target="#tab-estado" type="button" role="tab">
                                 <i class="fas fa-tasks me-1"></i>Estado
                             </button>
                         </li>
@@ -270,14 +272,17 @@
 
                                     <!-- Información General -->
                                     <div class="form-section">
-                                        <div class="form-section-title"><i class="fas fa-info-circle me-2"></i>Información General</div>
+                                        <div class="form-section-title"><i
+                                                class="fas fa-info-circle me-2"></i>Información General</div>
                                         <div class="row g-2">
                                             <div class="col-md-6">
-                                                <label class="form-label fw-medium">Nombre del Proyecto <span class="text-danger">*</span></label>
+                                                <label class="form-label fw-medium">Nombre del Proyecto <span
+                                                        class="text-danger">*</span></label>
                                                 <input type="text" class="form-control" id="nombreProyecto" required>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-medium">Marca <span class="text-danger">*</span></label>
+                                                <label class="form-label fw-medium">Marca <span
+                                                        class="text-danger">*</span></label>
                                                 <select class="form-select" id="marca" required>
                                                     <option value="">Seleccionar marca...</option>
                                                     <option value="IEmpresa">IEmpresa</option>
@@ -290,18 +295,23 @@
                                                     <option value="Otros">Otros...</option>
                                                 </select>
                                                 <div id="marcaOtrosDiv" class="mt-2" style="display:none">
-                                                    <input type="text" class="form-control form-control-sm" id="marcaOtros" placeholder="Escribe el nombre de la marca...">
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        id="marcaOtros" placeholder="Escribe el nombre de la marca...">
                                                 </div>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label fw-medium">Responsable(s) <span class="text-danger">*</span></label>
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <label class="form-label fw-medium mb-0">Responsable(s) <span
+                                                            class="text-danger">*</span></label>
+                                                    <span id="responsableFijo" class="d-none"></span>
+                                                </div>
                                                 <select class="form-select" id="responsable" multiple size="4" required>
                                                     <!-- Cargado dinámicamente desde la hoja "Responsables" -->
                                                 </select>
-                                                <div class="form-text"><i class="fas fa-info-circle me-1"></i>Mantén <kbd>Ctrl</kbd> para seleccionar varios</div>
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label fw-medium">Área <span class="text-danger">*</span></label>
+                                                <label class="form-label fw-medium">Área <span
+                                                        class="text-danger">*</span></label>
                                                 <select class="form-select" id="area" required>
                                                     <option value="">Seleccionar área...</option>
                                                     <option value="OSE">OSE</option>
@@ -310,19 +320,22 @@
                                                     <option value="Otros">Otros...</option>
                                                 </select>
                                                 <div id="areaOtrosDiv" class="mt-2" style="display:none">
-                                                    <input type="text" class="form-control form-control-sm" id="areaOtros" placeholder="Escribe el nombre del área...">
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        id="areaOtros" placeholder="Escribe el nombre del área...">
                                                 </div>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label fw-medium">Participantes</label>
-                                                <input type="text" class="form-control" id="participantes" placeholder="Ej: Juan, María, Pedro">
+                                                <input type="text" class="form-control" id="participantes"
+                                                    placeholder="Ej: Juan, María, Pedro">
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- Descripción -->
                                     <div class="form-section">
-                                        <div class="form-section-title"><i class="fas fa-file-alt me-2"></i>Descripción del Proyecto</div>
+                                        <div class="form-section-title"><i class="fas fa-file-alt me-2"></i>Descripción
+                                            del Proyecto</div>
 
                                         <div class="mb-2">
                                             <label class="form-label fw-medium">Requerimiento</label>
@@ -335,24 +348,29 @@
                                                 <i class="fas fa-paperclip me-1 text-muted"></i>Adjuntos
                                                 <span class="text-muted fw-normal">(imágenes o documentos)</span>
                                             </label>
-                                            <div id="adjuntosDropZone" class="adjuntos-dropzone adjuntos-dropzone-compact">
+                                            <div id="adjuntosDropZone"
+                                                class="adjuntos-dropzone adjuntos-dropzone-compact">
                                                 <i class="fas fa-cloud-upload-alt text-muted me-2"></i>
-                                                <span class="text-muted small">Arrastra, pega <kbd>Ctrl+V</kbd> o </span>
-                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="btnSelectFiles">
+                                                <span class="text-muted small">Arrastra, pega <kbd>Ctrl+V</kbd> o
+                                                </span>
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
+                                                    id="btnSelectFiles">
                                                     <i class="fas fa-folder-open me-1"></i>Seleccionar
                                                 </button>
                                                 <input type="file" id="adjuntosFileInput" multiple
-                                                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
-                                                       style="display:none">
+                                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
+                                                    style="display:none">
                                             </div>
                                             <div id="adjuntosPreviewGrid" class="adjuntos-preview-grid mt-2"></div>
                                         </div>
 
                                         <!-- Comentarios colapsables -->
                                         <div class="pt-1 mt-1 border-top">
-                                            <button type="button" class="btn btn-link btn-sm text-secondary p-0 mb-1" id="btnToggleComentarios">
+                                            <button type="button" class="btn btn-link btn-sm text-secondary p-0 mb-1"
+                                                id="btnToggleComentarios">
                                                 <i class="fas fa-chevron-right me-1" id="iconToggleComentarios"></i>
-                                                Agregar comentarios iniciales <span class="text-muted fw-normal">(opcional)</span>
+                                                Agregar comentarios iniciales <span
+                                                    class="text-muted fw-normal">(opcional)</span>
                                             </button>
                                             <div id="comentariosCollapse" style="display:none">
                                                 <div id="editorComentarios" class="quill-editor"></div>
@@ -369,9 +387,11 @@
 
                                     <!-- Accesos -->
                                     <div class="form-section">
-                                        <div class="form-section-title d-flex justify-content-between align-items-center">
+                                        <div
+                                            class="form-section-title d-flex justify-content-between align-items-center">
                                             <span><i class="fas fa-key me-2"></i>Accesos</span>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddAcceso">
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                id="btnAddAcceso">
                                                 <i class="fas fa-plus me-1"></i>Agregar Acceso
                                             </button>
                                         </div>
@@ -383,9 +403,11 @@
 
                                     <!-- Plataformas -->
                                     <div class="form-section">
-                                        <div class="form-section-title d-flex justify-content-between align-items-center">
+                                        <div
+                                            class="form-section-title d-flex justify-content-between align-items-center">
                                             <span><i class="fas fa-globe me-2"></i>Plataformas / URLs</span>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPlataforma">
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                id="btnAddPlataforma">
                                                 <i class="fas fa-plus me-1"></i>Agregar URL
                                             </button>
                                         </div>
@@ -402,29 +424,36 @@
                             <div class="tab-pane fade h-100" id="tab-estado" role="tabpanel">
                                 <div class="tab-pane-scroll">
                                     <div class="form-section">
-                                        <div class="form-section-title"><i class="fas fa-tasks me-2"></i>Estado del Proyecto</div>
+                                        <div class="form-section-title"><i class="fas fa-tasks me-2"></i>Estado del
+                                            Proyecto</div>
                                         <div class="row g-3">
                                             <div class="col-12">
-                                                <label class="form-label fw-medium">Estado <span class="text-danger">*</span></label>
+                                                <label class="form-label fw-medium">Estado <span
+                                                        class="text-danger">*</span></label>
                                                 <div class="estado-radio-group" id="estadoRadioGroup">
                                                     <label class="estado-radio-option" data-estado="En proceso">
-                                                        <input type="radio" name="estadoRadio" value="En proceso" checked>
-                                                        <span class="estado-radio-dot" style="background:#d97706"></span>
+                                                        <input type="radio" name="estadoRadio" value="En proceso"
+                                                            checked>
+                                                        <span class="estado-radio-dot"
+                                                            style="background:#d97706"></span>
                                                         En proceso
                                                     </label>
                                                     <label class="estado-radio-option" data-estado="Terminado">
                                                         <input type="radio" name="estadoRadio" value="Terminado">
-                                                        <span class="estado-radio-dot" style="background:#16a34a"></span>
+                                                        <span class="estado-radio-dot"
+                                                            style="background:#16a34a"></span>
                                                         Terminado
                                                     </label>
                                                     <label class="estado-radio-option" data-estado="Observaciones">
                                                         <input type="radio" name="estadoRadio" value="Observaciones">
-                                                        <span class="estado-radio-dot" style="background:#0369a1"></span>
+                                                        <span class="estado-radio-dot"
+                                                            style="background:#0369a1"></span>
                                                         Observaciones
                                                     </label>
                                                     <label class="estado-radio-option" data-estado="Rechazado">
                                                         <input type="radio" name="estadoRadio" value="Rechazado">
-                                                        <span class="estado-radio-dot" style="background:#dc2626"></span>
+                                                        <span class="estado-radio-dot"
+                                                            style="background:#dc2626"></span>
                                                         Rechazado
                                                     </label>
                                                 </div>
@@ -437,19 +466,10 @@
                                                 </select>
                                             </div>
                                             <div class="col-12">
-                                                <label class="form-label fw-medium">
-                                                    <i class="fas fa-calendar-check me-1 text-warning"></i>
-                                                    Fecha de cambio de estado
-                                                    <span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem">AUTO</span>
-                                                </label>
-                                                <div class="alert alert-warning py-2 mb-0" style="font-size:0.85rem">
-                                                    <i class="fas fa-info-circle me-1"></i>
-                                                    La fecha de actualización se registra <strong>automáticamente</strong> cuando se guarda este formulario y refleja el último cambio de estado.
-                                                </div>
-                                            </div>
-                                            <div class="col-12">
-                                                <label class="form-label fw-medium">Comentarios del Estado <span class="text-muted fw-normal">(notas del cambio)</span></label>
-                                                <textarea class="form-control" id="comentariosEstado" rows="5" placeholder="Ej: Se entregó al cliente, pendiente de revisión..."></textarea>
+                                                <label class="form-label fw-medium">Comentarios del Estado actual <span
+                                                        class="text-muted fw-normal">(opcional)</span></label>
+                                                <textarea class="form-control" id="comentariosEstado" rows="5"
+                                                    placeholder="Ej: Se entregó al cliente, pendiente de revisión..."></textarea>
                                             </div>
                                         </div>
                                     </div>
@@ -514,8 +534,8 @@
             </div>
 
             <div class="login-admin-area">
-                <button class="btn-admin-login" id="btnAdminLogin"
-                        onclick="loginAsAdmin()" title="Acceso administrador">
+                <button class="btn-admin-login" id="btnAdminLogin" onclick="loginAsAdmin()"
+                    title="Acceso administrador">
                     <i class="fas fa-lock"></i>
                 </button>
             </div>
@@ -535,26 +555,27 @@
     <!-- Scripts -->
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    
+
     <!-- Bootstrap Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- DataTables -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-    
+
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
+
     <!-- Select2 -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
-    
+
     <!-- Quill -->
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-    
+
     <!-- Custom JS -->
     <script src="main.js"></script>
 </body>
+
 </html>

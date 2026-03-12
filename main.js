@@ -149,16 +149,13 @@ function initDataTable() {
         pageLength: 10,
         columns: [
             {
-                data: 'fechaCreacion',
-                width: '130px',
-                render: function (data) {
-                    return displayDate(data);
-                }
-            },
-            {
                 data: 'nombreProyecto',
                 render: function (data, type, row) {
-                    return `<a href="#" class="project-name-link" data-id="${row.id}">${data}</a>`;
+                    const formattedDate = displayDate(row.fechaCreacion);
+                    return `<div class="project-cell">
+                                <a href="#" class="project-name-link fw-bold text-dark fs-6" style="text-decoration: none;" data-id="${row.id}">${data}</a>
+                                <div class="project-date text-muted mt-1" style="font-size: 0.75rem;">Creado el: ${formattedDate}</div>
+                            </div>`;
                 }
             },
             {
@@ -207,29 +204,40 @@ function initDataTable() {
  * Inicializa event listeners
  */
 function initEventListeners() {
+    // Función para el template de Select2 con Avatar
+    function formatResponsableTemplate(state) {
+        if (!state.id) return state.text;
+        const name = state.text;
+        const initials = name.split(' ').map(w => w[0] || '').join('').substring(0, 2).toUpperCase();
+        const gradient = getAvatarGradient(name);
+        return $(`<div class="d-flex align-items-center gap-2 px-1">
+            <div class="s2-user-avatar" style="background:${gradient}">${initials}</div>
+            <span class="fw-medium">${escHtml(name)}</span>
+        </div>`);
+    }
+
+    function formatResponsableSelection(state) {
+        if (!state.id) return state.text;
+        const name = state.text;
+        const initials = name.split(' ').map(w => w[0] || '').join('').substring(0, 2).toUpperCase();
+        const gradient = getAvatarGradient(name);
+        return $(`<div class="d-flex align-items-center gap-1">
+            <div class="s2-user-avatar-sm" style="background:${gradient}">${initials}</div>
+            <span class="small fw-medium">${escHtml(name)}</span>
+        </div>`);
+    }
+
     // Inicializar Select2 para responsables
     $('#responsable').select2({
         theme: 'bootstrap-5',
         placeholder: 'Selecciona al menos un responsable',
         allowClear: true,
-        width: '100%'
+        width: '100%',
+        templateResult: formatResponsableTemplate,
+        templateSelection: formatResponsableSelection
     });
 
-    // Bloquear que un usuario elimine su propio perfil si no es admin
-    $('#responsable').on('select2:unselecting', function (e) {
-        if (!isAdmin && currentUser && e.params.args.data.id === currentUser) {
-            e.preventDefault();
-            Swal.fire({
-                icon: 'warning',
-                title: 'No permitido',
-                text: 'No puedes removerte como responsable de tu propio registro.',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000
-            });
-        }
-    });
+    // Los listeners de unselecting y clearing fueron removidos porque currentUser ya no reside en este input
 
     // Nuevo proyecto
     $('#btnNuevoProyecto').on('click', nuevoProyecto);
@@ -370,10 +378,10 @@ function getAvatarGradient(name) {
 function getMarcaBadgeHtml(marca) {
     if (!marca) return '';
     const predefinedBrands = ['IEmpresa', 'JVN', 'Blackwell', 'ITAE', 'Eurocoach', 'Iberoteca', 'Thoth'];
-    
+
     const upperMarca = marca.toUpperCase();
     const predefinedMatched = predefinedBrands.find(b => b.toUpperCase() === upperMarca);
-    
+
     if (predefinedMatched) {
         const badgeClass = `badge-${predefinedMatched.toLowerCase().replace(/\./g, '').replace(/ /g, '')}`;
         return `<span class="badge badge-marca ${badgeClass}">${marca}</span>`;
@@ -383,7 +391,7 @@ function getMarcaBadgeHtml(marca) {
         for (let i = 0; i < marca.length; i++) {
             hash = marca.charCodeAt(i) + ((hash << 5) - hash);
         }
-        
+
         // HSL colores pastel lindos
         const h = Math.abs(hash) % 360;
         const s = 70 + (Math.abs(hash) % 20); // 70-90% saturación
@@ -500,8 +508,24 @@ function finishLogin() {
  */
 function populateFormResponsable() {
     const $sel = $('#responsable');
+    const $fijo = $('#responsableFijo');
     $sel.empty();
+
+    if (!isAdmin && currentUser) {
+        const initials = currentUser.split(' ').map(w => w[0] || '').join('').substring(0, 2).toUpperCase();
+        const gradient = getAvatarGradient(currentUser);
+        $fijo.html(`
+            <div class="d-inline-flex align-items-center gap-1 bg-light border rounded px-2 py-1" style="font-size:0.75rem">
+                <div class="s2-user-avatar-sm" style="background:${gradient}">${initials}</div>
+                <span class="fw-semibold text-primary">${escHtml(currentUser)}</span>
+            </div>
+        `).removeClass('d-none');
+    } else {
+        $fijo.addClass('d-none').empty();
+    }
+
     responsablesData.forEach(name => {
+        if (!isAdmin && currentUser && name === currentUser) return;
         $sel.append(`<option value="${escHtml(name)}">${escHtml(name)}</option>`);
     });
 }
@@ -613,10 +637,7 @@ function nuevoProyecto() {
     $('#modalProyectoTitle').text('Nuevo Proyecto');
     $('#proyectoId').val('');
     limpiarFormulario();
-    // Pre-seleccionar el perfil activo como responsable por defecto
-    if (!isAdmin && currentUser) {
-        $('#responsable').val([currentUser]).trigger('change');
-    }
+    // perfil activo ya se maneja fuera del select cuando no es admin
     $('#modalProyecto').modal('show');
 }
 
@@ -637,11 +658,14 @@ function editarProyecto(id) {
     // Llenar campos básicos
     $('#nombreProyecto').val(proyecto.nombreProyecto);
     // Responsable: soporte multi (separado por " | ")
-    const responsables = (proyecto.responsable || '').split(' | ').map(r => r.trim()).filter(Boolean);
-    
-    // Si el usuario actual es uno de los responsables o está abriendo su proyecto, asegurarse visualmente (Select2)
+    let responsables = (proyecto.responsable || '').split(' | ').map(r => r.trim()).filter(Boolean);
+
+    // Si no es admin y hay usuario, se excluye del select2 porque ya aparece fijo en el span
+    if (!isAdmin && currentUser) {
+        responsables = responsables.filter(r => r !== currentUser);
+    }
     $('#responsable').val(responsables).trigger('change');
-    
+
     $('#participantes').val(proyecto.participantes);
     $('#estado').val(proyecto.estado);
     // Sincronizar radio buttons con el estado cargado
@@ -740,7 +764,9 @@ async function guardarProyecto() {
 
     // Validar responsable multi-select
     const responsablesSeleccionados = Array.from($('#responsable')[0].selectedOptions).map(o => o.value);
-    if (responsablesSeleccionados.length === 0) {
+
+    // Solo requerir si es Admin, ya que los usuarios normales siempre tienen su propio perfil como responsable fijo
+    if (isAdmin && responsablesSeleccionados.length === 0) {
         showError('Por favor selecciona al menos un responsable.');
         // Ir a la primera pestaña
         $('#tab-general-btn').tab('show');
@@ -767,7 +793,9 @@ async function guardarProyecto() {
             proyectosData.find(p => p.id === $('#proyectoId').val())?.fechaCreacion :
             formatDate(new Date()),
         marca: getMarcaValue(),
-        responsable: Array.from($('#responsable')[0].selectedOptions).map(o => o.value).join(' | '),
+        responsable: (!isAdmin && currentUser)
+            ? [currentUser, ...Array.from($('#responsable')[0].selectedOptions).map(o => o.value)].join(' | ')
+            : Array.from($('#responsable')[0].selectedOptions).map(o => o.value).join(' | '),
         area: getAreaValue(),
         participantes: $('#participantes').val(),
         requerimiento: quillRequerimiento.root.innerHTML,
