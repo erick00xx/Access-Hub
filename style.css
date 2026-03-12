@@ -42,19 +42,27 @@ body {
     border-radius: 12px;
 }
 
+.stat-card .card-body {
+    padding: 1rem 1.25rem;
+}
+
 .stat-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px);
     box-shadow: var(--card-shadow-hover);
 }
 
 .stat-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+}
+
+.fs-sm {
+    font-size: 0.85rem;
 }
 
 /* Cards */
@@ -68,7 +76,7 @@ body {
 
 /* Tables */
 #tablaProyectos {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
 #tablaProyectos thead th {
@@ -78,14 +86,22 @@ body {
     letter-spacing: 0.5px;
     color: var(--secondary-color);
     border-bottom: 2px solid #e2e8f0;
+    padding: 1rem;
+    background-color: #f8fafc;
 }
 
 #tablaProyectos tbody tr {
     transition: all 0.2s ease;
 }
 
+#tablaProyectos tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
 #tablaProyectos tbody tr:hover {
-    background-color: #f1f5f9;
+    background-color: #f8fafc;
+    box-shadow: inset 3px 0 0 0 var(--primary-color);
 }
 
 /* Status Badges */
@@ -179,28 +195,40 @@ body {
     margin-bottom: 0;
 }
 
-.quill-editor .ql-toolbar {
+.ql-toolbar.ql-snow {
     border-radius: 8px 8px 0 0;
     border-color: #e2e8f0;
     background: #f8fafc;
     padding: 6px 8px;
 }
 
-.quill-editor .ql-container {
+.quill-editor.ql-container {
     border-radius: 0 0 8px 8px;
     border-color: #e2e8f0;
-    min-height: 100px;
     font-size: 0.9rem;
 }
 
 /* Quill alto expandido (Requerimiento) */
-.quill-tall .ql-container {
-    min-height: 220px;
+#editorRequerimiento.ql-container,
+#editorRequerimiento .ql-editor {
+    min-height: 350px !important;
 }
 
 /* Editor de Comentarios: altura cómoda */
-#editorComentarios .ql-container {
-    min-height: 120px;
+#editorComentarios.ql-container,
+#editorComentarios .ql-editor {
+    min-height: 250px !important;
+}
+
+/* Fix altura dropdown en Select2 Modal */
+.select2-container--bootstrap-5 .select2-selection {
+    min-height: auto;
+}
+.select2-container .select2-selection--multiple {
+    min-height: 38px;
+}
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered .select2-selection__choice {
+    font-size: 0.85rem;
 }
 
 /* Dropzone compacta (inline) */
@@ -775,6 +803,11 @@ body {
 
 .swal2-cancel {
     border-radius: 8px !important;
+}
+
+/* Modales que deban ir encima del login overlay */
+.swal-on-top {
+    z-index: 100000 !important;
 }
 
 /* Animations */

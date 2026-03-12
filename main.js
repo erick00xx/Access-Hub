@@ -22,7 +22,7 @@ let adjuntoIdCounter = 0;     // Contador para IDs únicos de adjuntos
 
 // Sesión activa
 let currentUser = null;    // Nombre del perfil activo (null = sin sesión)
-let isAdmin    = false;    // true = modo administrador sin restricciones
+let isAdmin = false;    // true = modo administrador sin restricciones
 let responsablesData = []; // Nombres cargados desde la hoja "Responsables"
 
 // ============================================
@@ -103,7 +103,7 @@ const datosDemo = [
 // INICIALIZACIÓN
 // ============================================
 
-$(document).ready(function() {
+$(document).ready(function () {
     initQuillEditors();
     initDataTable();
     initEventListeners();
@@ -117,7 +117,7 @@ function initQuillEditors() {
     const toolbarOptions = [
         ['bold', 'italic', 'underline', 'strike'],
         ['blockquote', 'code-block'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
         [{ 'header': [1, 2, 3, false] }],
         ['link'],
         ['clean']
@@ -151,28 +151,27 @@ function initDataTable() {
             {
                 data: 'fechaCreacion',
                 width: '130px',
-                render: function(data) {
+                render: function (data) {
                     return displayDate(data);
                 }
             },
-            { 
+            {
                 data: 'nombreProyecto',
-                render: function(data, type, row) {
+                render: function (data, type, row) {
                     return `<a href="#" class="project-name-link" data-id="${row.id}">${data}</a>`;
                 }
             },
-            { 
+            {
                 data: 'marca',
-                render: function(data) {
-                    const badgeClass = `badge-${data.toLowerCase().replace('.', '')}`;
-                    return `<span class="badge badge-marca ${badgeClass}">${data}</span>`;
+                render: function (data) {
+                    return getMarcaBadgeHtml(data);
                 }
             },
             { data: 'responsable' },
             { data: 'area' },
-            { 
+            {
                 data: 'estado',
-                render: function(data, type, row) {
+                render: function (data, type, row) {
                     let badgeClass = 'badge-en-proceso';
                     if (data === 'Terminado') badgeClass = 'badge-terminado';
                     if (data === 'Rechazado') badgeClass = 'badge-rechazado';
@@ -184,7 +183,7 @@ function initDataTable() {
             {
                 data: null,
                 orderable: false,
-                render: function(data, type, row) {
+                render: function (data, type, row) {
                     return `
                         <div class="d-flex">
                             <button class="btn btn-info btn-action" onclick="verProyecto('${row.id}')" title="Ver detalle">
@@ -208,39 +207,63 @@ function initDataTable() {
  * Inicializa event listeners
  */
 function initEventListeners() {
+    // Inicializar Select2 para responsables
+    $('#responsable').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Selecciona al menos un responsable',
+        allowClear: true,
+        width: '100%'
+    });
+
+    // Bloquear que un usuario elimine su propio perfil si no es admin
+    $('#responsable').on('select2:unselecting', function (e) {
+        if (!isAdmin && currentUser && e.params.args.data.id === currentUser) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'No permitido',
+                text: 'No puedes removerte como responsable de tu propio registro.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+        }
+    });
+
     // Nuevo proyecto
     $('#btnNuevoProyecto').on('click', nuevoProyecto);
-    
+
     // Guardar proyecto
     $('#btnGuardarProyecto').on('click', guardarProyecto);
-    
+
     // Agregar campos dinámicos
     $('#btnAddAcceso').on('click', () => agregarCampoDinamico('accesos'));
     $('#btnAddPlataforma').on('click', () => agregarCampoDinamico('plataformas'));
-    
+
     // Filtros
     $('#filterMarca, #filterEstado, #filterResponsable').on('change', aplicarFiltros);
-    
+
     // Click en nombre de proyecto
-    $(document).on('click', '.project-name-link', function(e) {
+    $(document).on('click', '.project-name-link', function (e) {
         e.preventDefault();
         const id = $(this).data('id');
         verProyecto(id);
     });
-    
+
     // Editar desde modal detalle
-    $('#btnEditarDesdeDetalle').on('click', function() {
+    $('#btnEditarDesdeDetalle').on('click', function () {
         $('#modalDetalle').modal('hide');
         setTimeout(() => {
             editarProyecto(currentProyectoId);
         }, 300);
     });
-    
+
     // Limpiar formulario al cerrar modal
     $('#modalProyecto').on('hidden.bs.modal', limpiarFormulario);
 
     // Toggle comentarios iniciales
-    $('#btnToggleComentarios').on('click', function() {
+    $('#btnToggleComentarios').on('click', function () {
         const $collapse = $('#comentariosCollapse');
         const $icon = $('#iconToggleComentarios');
         const isVisible = $collapse.is(':visible');
@@ -249,11 +272,11 @@ function initEventListeners() {
     });
 
     // Marca y Área con opción "Otros" libre
-    $('#marca').on('change', function() { toggleOtrosInput('marca', $(this).val()); });
-    $('#area').on('change',  function() { toggleOtrosInput('area',  $(this).val()); });
+    $('#marca').on('change', function () { toggleOtrosInput('marca', $(this).val()); });
+    $('#area').on('change', function () { toggleOtrosInput('area', $(this).val()); });
 
     // Sincronizar radio buttons de Estado con el select oculto
-    $(document).on('change', 'input[name="estadoRadio"]', function() {
+    $(document).on('change', 'input[name="estadoRadio"]', function () {
         $('#estado').val($(this).val());
         // Actualizar estilo visual de la opción activa
         $('.estado-radio-option').removeClass('active');
@@ -279,10 +302,10 @@ let _proyectosCargados = false;
  */
 async function loadResponsablesAndShowLogin() {
     if (DEV_MODE || APPS_SCRIPT_URL === 'TU_URL_DE_APPS_SCRIPT_AQUI') {
-        responsablesData  = ['Erick', 'Scott', 'Luigui', 'Mayra'];
-        _cachedAdminPass  = 'admin123';
+        responsablesData = ['Erick', 'Scott', 'Luigui', 'Mayra'];
+        _cachedAdminPass = 'admin123';
         // Simular datos de demo
-        proyectosData     = datosDemo;
+        proyectosData = datosDemo;
         _proyectosCargados = true;
         showLoginScreen();
         return;
@@ -311,8 +334,8 @@ async function loadResponsablesAndShowLogin() {
 
         // Proyectos en caché
         if (respProyectos.status === 'fulfilled' && respProyectos.value.success) {
-            proyectosData      = respProyectos.value.data || [];
-            _proyectosCargados  = true;
+            proyectosData = respProyectos.value.data || [];
+            _proyectosCargados = true;
         }
     } catch (e) {
         console.error('Error en carga inicial:', e);
@@ -342,6 +365,37 @@ function getAvatarGradient(name) {
 }
 
 /**
+ * Genera el HTML de un badge para la marca, asegurando que las no predefinidas tengan un color bonito y legible.
+ */
+function getMarcaBadgeHtml(marca) {
+    if (!marca) return '';
+    const predefinedBrands = ['IEmpresa', 'JVN', 'Blackwell', 'ITAE', 'Eurocoach', 'Iberoteca', 'Thoth'];
+    
+    const upperMarca = marca.toUpperCase();
+    const predefinedMatched = predefinedBrands.find(b => b.toUpperCase() === upperMarca);
+    
+    if (predefinedMatched) {
+        const badgeClass = `badge-${predefinedMatched.toLowerCase().replace(/\./g, '').replace(/ /g, '')}`;
+        return `<span class="badge badge-marca ${badgeClass}">${marca}</span>`;
+    } else {
+        // Generar color consistente basado en el nombre string hash
+        let hash = 0;
+        for (let i = 0; i < marca.length; i++) {
+            hash = marca.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        // HSL colores pastel lindos
+        const h = Math.abs(hash) % 360;
+        const s = 70 + (Math.abs(hash) % 20); // 70-90% saturación
+        const bgL = 94; // Fondo claro (Lightness)
+        const textL = 30; // Texto oscurecido
+        const borderL = 86; // Borde intermedio
+
+        return `<span class="badge badge-marca" style="background-color: hsl(${h}, ${s}%, ${bgL}%); color: hsl(${h}, ${s}%, ${textL}%); border: 1px solid hsl(${h}, ${s}%, ${borderL}%);">${marca}</span>`;
+    }
+}
+
+/**
  * Muestra el overlay de selección de perfil.
  */
 function showLoginScreen() {
@@ -363,7 +417,7 @@ function showLoginScreen() {
  */
 function selectProfile(name) {
     currentUser = name;
-    isAdmin     = false;
+    isAdmin = false;
     finishLogin();
 }
 
@@ -376,10 +430,10 @@ async function loginAsAdmin() {
     let adminPass = _cachedAdminPass || 'admin123';
     if (!_cachedAdminPass && !DEV_MODE && APPS_SCRIPT_URL !== 'TU_URL_DE_APPS_SCRIPT_AQUI') {
         try {
-            const resp   = await fetch(`${APPS_SCRIPT_URL}?action=getPassword`);
+            const resp = await fetch(`${APPS_SCRIPT_URL}?action=getPassword`);
             const result = await resp.json();
             if (result.success) {
-                adminPass        = result.data;
+                adminPass = result.data;
                 _cachedAdminPass = result.data;
             }
         } catch (e) {
@@ -388,37 +442,37 @@ async function loginAsAdmin() {
     }
 
     const { value: inputPass } = await Swal.fire({
-        title            : 'Acceso restringido',
-        input            : 'password',
-        inputPlaceholder : 'Contraseña de administrador',
-        showCancelButton : true,
+        title: 'Acceso restringido',
+        input: 'password',
+        inputPlaceholder: 'Contraseña de administrador',
+        showCancelButton: true,
         confirmButtonText: 'Ingresar',
-        cancelButtonText : 'Cancelar',
+        cancelButtonText: 'Cancelar',
         confirmButtonColor: '#1d4ed8',
-        cancelButtonColor : '#64748b',
-        width            : '340px',
-        buttonsStyling   : true,
-        showClass        : { popup: '' },
-        hideClass        : { popup: '' },
-        customClass      : { popup: 'admin-pass-popup', title: 'admin-pass-title', input: 'admin-pass-input' },
-        inputAttributes  : { autocomplete: 'new-password', spellcheck: 'false' }
+        cancelButtonColor: '#64748b',
+        width: '340px',
+        buttonsStyling: true,
+        showClass: { popup: '' },
+        hideClass: { popup: '' },
+        customClass: { container: 'swal-on-top', popup: 'admin-pass-popup', title: 'admin-pass-title', input: 'admin-pass-input' },
+        inputAttributes: { autocomplete: 'new-password', spellcheck: 'false' }
     });
 
     if (inputPass === undefined) return; // cancelado
 
     if (inputPass === adminPass) {
         currentUser = null;
-        isAdmin     = true;
+        isAdmin = true;
         finishLogin();
     } else {
         Swal.fire({
-            icon             : 'error',
-            title            : 'Contraseña incorrecta',
-            showConfirmButton : false,
-            timer            : 1600,
-            width            : '300px',
-            showClass        : { popup: '' },
-            hideClass        : { popup: '' }
+            icon: 'error',
+            title: 'Contraseña incorrecta',
+            showConfirmButton: false,
+            timer: 1600,
+            width: '300px',
+            showClass: { popup: '' },
+            hideClass: { popup: '' }
         });
     }
 }
@@ -472,7 +526,7 @@ function updateNavUser() {
  */
 function cambiarPerfil() {
     currentUser = null;
-    isAdmin     = false;
+    isAdmin = false;
     $('#navUserInfo').addClass('d-none');
     showLoginScreen();
     // Nota: al seleccionar perfil, finishLogin() usará _proyectosCargados=true
@@ -503,7 +557,7 @@ function applyUserRestrictions() {
  */
 function loadProyectos() {
     showLoading(true);
-    
+
     if (DEV_MODE || APPS_SCRIPT_URL === 'TU_URL_DE_APPS_SCRIPT_AQUI') {
         // Usar datos de demostración
         setTimeout(() => {
@@ -515,16 +569,16 @@ function loadProyectos() {
         }, 800);
         return;
     }
-    
+
     // Llamada real al backend
     $.ajax({
         url: APPS_SCRIPT_URL,
         method: 'GET',
         data: { action: 'getProyectos' },
-        success: function(response) {
+        success: function (response) {
             if (response.success) {
-                proyectosData      = response.data;
-                _proyectosCargados  = true;
+                proyectosData = response.data;
+                _proyectosCargados = true;
                 updateStats();
                 populateFilters();
                 aplicarFiltros();
@@ -532,11 +586,11 @@ function loadProyectos() {
                 showError('Error al cargar proyectos: ' + response.message);
             }
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Detalle del error:", xhr, status, error);
             showError('Error de conexión: ' + error);
         },
-        complete: function() {
+        complete: function () {
             showLoading(false);
         }
     });
@@ -561,7 +615,7 @@ function nuevoProyecto() {
     limpiarFormulario();
     // Pre-seleccionar el perfil activo como responsable por defecto
     if (!isAdmin && currentUser) {
-        $('#responsable').val([currentUser]);
+        $('#responsable').val([currentUser]).trigger('change');
     }
     $('#modalProyecto').modal('show');
 }
@@ -575,16 +629,19 @@ function editarProyecto(id) {
         showError('Proyecto no encontrado');
         return;
     }
-    
+
     currentProyectoId = id;
     $('#modalProyectoTitle').text('Editar Proyecto');
     $('#proyectoId').val(id);
-    
+
     // Llenar campos básicos
     $('#nombreProyecto').val(proyecto.nombreProyecto);
     // Responsable: soporte multi (separado por " | ")
     const responsables = (proyecto.responsable || '').split(' | ').map(r => r.trim()).filter(Boolean);
-    $('#responsable').val(responsables);
+    
+    // Si el usuario actual es uno de los responsables o está abriendo su proyecto, asegurarse visualmente (Select2)
+    $('#responsable').val(responsables).trigger('change');
+    
     $('#participantes').val(proyecto.participantes);
     $('#estado').val(proyecto.estado);
     // Sincronizar radio buttons con el estado cargado
@@ -595,7 +652,7 @@ function editarProyecto(id) {
     $('#comentariosEstado').val(proyecto.comentariosEstado);
 
     // Marca – soporte de opción libre
-    const marcasPredefinidas = ['IEmpresa','JVN','Blackwell','ITAE','Eurocoach','Iberoteca','Thoth','Otros',''];
+    const marcasPredefinidas = ['IEmpresa', 'JVN', 'Blackwell', 'ITAE', 'Eurocoach', 'Iberoteca', 'Thoth', 'Otros', ''];
     if (marcasPredefinidas.includes(proyecto.marca)) {
         $('#marca').val(proyecto.marca);
         $('#marcaOtrosDiv').hide().find('input').val('');
@@ -606,7 +663,7 @@ function editarProyecto(id) {
     }
 
     // Área – soporte de opción libre
-    const areasPredefinidas = ['OSE','DAD','.ID.','Otros',''];
+    const areasPredefinidas = ['OSE', 'DAD', '.ID.', 'Otros', ''];
     if (areasPredefinidas.includes(proyecto.area)) {
         $('#area').val(proyecto.area);
         $('#areaOtrosDiv').hide().find('input').val('');
@@ -615,7 +672,7 @@ function editarProyecto(id) {
         $('#areaOtros').val(proyecto.area);
         $('#areaOtrosDiv').show();
     }
-    
+
     // Llenar editores Quill
     quillRequerimiento.root.innerHTML = proyecto.requerimiento || '';
     quillComentarios.root.innerHTML = proyecto.comentarios || '';
@@ -627,11 +684,11 @@ function editarProyecto(id) {
         $('#comentariosCollapse').hide();
         $('#iconToggleComentarios').removeClass('fa-chevron-down').addClass('fa-chevron-right');
     }
-    
+
     // Llenar campos dinámicos (accesos y plataformas)
     $('#accesosContainer').empty();
     $('#plataformasContainer').empty();
-    
+
     if (proyecto.accesos && proyecto.accesos.length > 0) {
         proyecto.accesos.forEach(acceso => agregarCampoDinamico('accesos', acceso.titulo, acceso.valor));
     }
@@ -643,31 +700,31 @@ function editarProyecto(id) {
     adjuntosData = [];
     if (proyecto.imagenes && proyecto.imagenes.length > 0) {
         proyecto.imagenes.forEach(img => {
-            const fileId     = getDriveFileId(img.valor);
-            const isImg      = isDriveImageUrl(img.valor);
-            const thumbUrl   = fileId
+            const fileId = getDriveFileId(img.valor);
+            const isImg = isDriveImageUrl(img.valor);
+            const thumbUrl = fileId
                 ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`
                 : (isImg ? img.valor : null);
-            const viewUrl    = fileId ? `https://drive.google.com/file/d/${fileId}/view`    : img.valor;
+            const viewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/view` : img.valor;
             const previewUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : img.valor;
             adjuntosData.push({
-                id          : 'adj_' + (++adjuntoIdCounter),
-                titulo      : img.titulo,
-                valor       : thumbUrl || img.valor,  // guardar thumbnailUrl para imágenes
-                thumbnail   : thumbUrl,
+                id: 'adj_' + (++adjuntoIdCounter),
+                titulo: img.titulo,
+                valor: thumbUrl || img.valor,  // guardar thumbnailUrl para imágenes
+                thumbnail: thumbUrl,
                 thumbnailUrl: thumbUrl,
                 viewUrl,
                 previewUrl,
                 fileId,
-                isImage     : isImg,
-                type        : isImg ? 'image' : 'other',
-                uploading   : false,
-                error       : false
+                isImage: isImg,
+                type: isImg ? 'image' : 'other',
+                uploading: false,
+                error: false
             });
         });
     }
     updateAdjuntosGrid();
-    
+
     actualizarVisibilidadNoItems();
     $('#modalProyecto').modal('show');
 }
@@ -703,11 +760,11 @@ async function guardarProyecto() {
         $('#areaOtros').focus();
         return;
     }
-    
+
     const proyecto = {
         id: $('#proyectoId').val() || generarId(),
-        fechaCreacion: $('#proyectoId').val() ? 
-            proyectosData.find(p => p.id === $('#proyectoId').val())?.fechaCreacion : 
+        fechaCreacion: $('#proyectoId').val() ?
+            proyectosData.find(p => p.id === $('#proyectoId').val())?.fechaCreacion :
             formatDate(new Date()),
         marca: getMarcaValue(),
         responsable: Array.from($('#responsable')[0].selectedOptions).map(o => o.value).join(' | '),
@@ -725,9 +782,9 @@ async function guardarProyecto() {
         fechaActualizacion: formatDate(new Date()),
         comentariosEstado: $('#comentariosEstado').val()
     };
-    
+
     showLoading(true);
-    
+
     try {
         const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
@@ -738,9 +795,9 @@ async function guardarProyecto() {
                 proyecto: proyecto
             })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             Swal.fire({ icon: 'success', title: currentProyectoId ? 'Actualizado' : 'Creado', text: result.message, timer: 2000 });
             $('#modalProyecto').modal('hide');
@@ -761,7 +818,7 @@ async function guardarProyecto() {
 async function eliminarProyecto(id) {
     const proyecto = proyectosData.find(p => p.id === id);
     const result = await Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí' });
-    
+
     if (result.isConfirmed) {
         showLoading(true);
         try {
@@ -795,24 +852,24 @@ function verProyecto(id) {
         showError('Proyecto no encontrado');
         return;
     }
-    
+
     currentProyectoId = id;
     $('#modalDetalleTitle').text(proyecto.nombreProyecto);
-    
+
     let estadoBadge = 'badge-en-proceso';
     if (proyecto.estado === 'Terminado') estadoBadge = 'badge-terminado';
     if (proyecto.estado === 'Rechazado') estadoBadge = 'badge-rechazado';
     if (proyecto.estado === 'Observaciones') estadoBadge = 'badge-observaciones';
-    
+
     let accesosHtml = '';
     if (proyecto.accesos && proyecto.accesos.length > 0) {
         accesosHtml = `<div class="acceso-grid">${proyecto.accesos.map((a, idx) => {
             const partes = (a.valor || '').split(' | ');
             const usuario = partes[0] ? partes[0].trim() : '';
-            const pass    = partes.slice(1).join(' | ').trim();
-            const uid      = `accp_${proyecto.id}_${idx}`;
-            const uEsc     = usuario.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-            const pEsc     = pass.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+            const pass = partes.slice(1).join(' | ').trim();
+            const uid = `accp_${proyecto.id}_${idx}`;
+            const uEsc = usuario.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            const pEsc = pass.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             return `
             <div class="acceso-card">
                 <div class="acceso-title-bar">
@@ -841,11 +898,11 @@ function verProyecto(id) {
     } else {
         accesosHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay accesos registrados</p>';
     }
-    
+
     let plataformasHtml = '';
     if (proyecto.plataformas && proyecto.plataformas.length > 0) {
         plataformasHtml = `<div class="plataforma-grid">${proyecto.plataformas.map((p, pi) => {
-            const urlEsc = p.valor.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+            const urlEsc = p.valor.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             return `
             <div class="plataforma-card">
                 <span class="plataforma-label">${p.titulo}</span>
@@ -858,12 +915,8 @@ function verProyecto(id) {
     } else {
         plataformasHtml = '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay plataformas registradas</p>';
     }
-    
+
     const imagenesHtml = renderAdjuntosDetalle(proyecto.imagenes);
-    
-    const marcaClass = proyecto.marca
-        ? proyecto.marca.toLowerCase().replace(/\./g, '').replace(/ /g, '')
-        : 'otros';
 
     const html = `
         <div class="detalle-proyecto">
@@ -873,7 +926,7 @@ function verProyecto(id) {
                 ${proyecto.marca ? `
                 <div class="detalle-info-item">
                     <span class="detalle-info-label"><i class="fas fa-tag me-1"></i>Marca</span>
-                    <span class="detalle-info-value"><span class="badge badge-marca badge-${marcaClass} fs-6">${proyecto.marca}</span></span>
+                    <span class="detalle-info-value" style="font-size: 1.1em;">${getMarcaBadgeHtml(proyecto.marca)}</span>
                 </div>` : ''}
                 <div class="detalle-info-item">
                     <span class="detalle-info-label"><i class="fas fa-user me-1"></i>Responsable</span>
@@ -962,7 +1015,7 @@ function verProyecto(id) {
             </div>
         </div>
     `;
-    
+
     $('#detalleContent').html(html);
     $('#modalDetalle').modal('show');
 }
@@ -981,9 +1034,9 @@ function agregarCampoDinamico(tipo, titulo = '', valor = '') {
 
     if (tipo === 'accesos') {
         // Separar usuario y contraseña del campo valor (formato: "usuario | pass")
-        const partes    = valor.split(' | ');
+        const partes = valor.split(' | ');
         const usuarioVal = partes[0] ? partes[0].trim() : '';
-        const passVal    = partes.slice(1).join(' | ').trim();
+        const passVal = partes.slice(1).join(' | ').trim();
 
         html = `
         <div class="dynamic-field" data-index="${index}">
@@ -1016,17 +1069,17 @@ function agregarCampoDinamico(tipo, titulo = '', valor = '') {
         </div>`;
     } else {
         let placeholderTitulo = 'Título';
-        let placeholderValor  = 'URL o valor';
-        let iconClass         = 'fa-link';
+        let placeholderValor = 'URL o valor';
+        let iconClass = 'fa-link';
 
         if (tipo === 'plataformas') {
             placeholderTitulo = 'Ej: Github, Bitrix, Loocker';
-            placeholderValor  = 'https://';
-            iconClass         = 'fa-globe';
+            placeholderValor = 'https://';
+            iconClass = 'fa-globe';
         } else if (tipo === 'imagenes') {
             placeholderTitulo = 'Ej: Diagrama, Wireframe, Mockup';
-            placeholderValor  = 'URL de la imagen';
-            iconClass         = 'fa-image';
+            placeholderValor = 'URL de la imagen';
+            iconClass = 'fa-image';
         }
 
         html = `
@@ -1065,10 +1118,10 @@ function removerCampoDinamico(btn, tipo) {
  */
 function obtenerCamposDinamicos(tipo) {
     const items = [];
-    $(`#${tipo}Container .dynamic-field`).each(function() {
+    $(`#${tipo}Container .dynamic-field`).each(function () {
         const titulo = $(this).find('.campo-titulo').val().trim();
         if (tipo === 'accesos') {
-            const usuario  = $(this).find('.campo-usuario').val().trim();
+            const usuario = $(this).find('.campo-usuario').val().trim();
             const password = $(this).find('.campo-password').val().trim();
             if (titulo || usuario || password) {
                 items.push({ titulo, valor: `${usuario} | ${password}` });
@@ -1116,8 +1169,8 @@ function limpiarFormulario() {
     // Ocultar comentarios y resetear
     $('#comentariosCollapse').hide();
     $('#iconToggleComentarios').removeClass('fa-chevron-down').addClass('fa-chevron-right');
-    // Resetear responsable multi-select
-    $('#responsable option').prop('selected', false);
+    // Resetear responsable multi-select y Select2
+    $('#responsable').val(null).trigger('change');
     // Volver a la primera pestaña
     $('#tab-general-btn').tab('show');
 }
@@ -1166,7 +1219,7 @@ function populateFilters() {
  * Aplica los filtros a la tabla
  */
 function aplicarFiltros() {
-    const marca  = $('#filterMarca').val();
+    const marca = $('#filterMarca').val();
     const estado = $('#filterEstado').val();
     // Para no-admin, siempre usar su propio perfil como filtro de responsable
     const responsable = (!isAdmin && currentUser) ? currentUser : $('#filterResponsable').val();
@@ -1270,21 +1323,21 @@ function renderAdjuntosDetalle(imagenes) {
         return '<p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i>No hay adjuntos registrados</p>';
     }
     _detalleAdjuntos = imagenes.map(img => {
-        const fileId     = getDriveFileId(img.valor);
-        const isImg      = isDriveImageUrl(img.valor);
-        const thumbUrl   = fileId
+        const fileId = getDriveFileId(img.valor);
+        const isImg = isDriveImageUrl(img.valor);
+        const thumbUrl = fileId
             ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`
             : (isImg ? img.valor : null);
         return {
-            titulo      : img.titulo,
-            valor       : img.valor,
+            titulo: img.titulo,
+            valor: img.valor,
             fileId,
-            isImage     : isImg,
+            isImage: isImg,
             thumbnailUrl: thumbUrl,
-            thumbnail   : thumbUrl,
-            viewUrl     : fileId ? `https://drive.google.com/file/d/${fileId}/view`    : img.valor,
-            previewUrl  : fileId ? `https://drive.google.com/file/d/${fileId}/preview` : img.valor,
-            type        : isImg ? 'image' : 'other'
+            thumbnail: thumbUrl,
+            viewUrl: fileId ? `https://drive.google.com/file/d/${fileId}/view` : img.valor,
+            previewUrl: fileId ? `https://drive.google.com/file/d/${fileId}/preview` : img.valor,
+            type: isImg ? 'image' : 'other'
         };
     });
 
@@ -1335,7 +1388,7 @@ function initAdjuntos() {
     });
 
     // Drag & Drop
-    dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
     dropZone.addEventListener('dragleave', (e) => { if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over'); });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
@@ -1367,9 +1420,9 @@ function getFileType(file) {
 
 /** Devuelve la clase FontAwesome + color para el tipo de archivo */
 function getFileIcon(type) {
-    const icons  = { image:'fa-image', pdf:'fa-file-pdf', doc:'fa-file-word', xls:'fa-file-excel', other:'fa-file' };
-    const colors = { image:'text-info', pdf:'text-danger', doc:'text-primary', xls:'text-success', other:'text-secondary' };
-    return `${icons[type]||icons.other} ${colors[type]||colors.other}`;
+    const icons = { image: 'fa-image', pdf: 'fa-file-pdf', doc: 'fa-file-word', xls: 'fa-file-excel', other: 'fa-file' };
+    const colors = { image: 'text-info', pdf: 'text-danger', doc: 'text-primary', xls: 'text-success', other: 'text-secondary' };
+    return `${icons[type] || icons.other} ${colors[type] || colors.other}`;
 }
 
 /**
@@ -1377,21 +1430,21 @@ function getFileIcon(type) {
  */
 async function handleFiles(files) {
     for (const file of files) {
-        const id      = 'adj_' + (++adjuntoIdCounter);
-        const type    = getFileType(file);
+        const id = 'adj_' + (++adjuntoIdCounter);
+        const type = getFileType(file);
         const tempUrl = URL.createObjectURL(file);
 
         adjuntosData.push({
             id, type, uploading: true, error: false,
-            titulo      : file.name.replace(/\.[^/.]+$/, ''),
-            valor       : tempUrl,
-            thumbnail   : type === 'image' ? tempUrl : null,  // blob URL para preview instantáneo
+            titulo: file.name.replace(/\.[^/.]+$/, ''),
+            valor: tempUrl,
+            thumbnail: type === 'image' ? tempUrl : null,  // blob URL para preview instantáneo
             thumbnailUrl: null,
-            viewUrl     : null,
-            previewUrl  : null,
-            fileId      : null,
-            isImage     : type === 'image',
-            _tempUrl    : tempUrl
+            viewUrl: null,
+            previewUrl: null,
+            fileId: null,
+            isImage: type === 'image',
+            _tempUrl: tempUrl
         });
         updateAdjuntosGrid();
 
@@ -1404,16 +1457,16 @@ async function handleFiles(files) {
                     URL.revokeObjectURL(adjuntosData[idx]._tempUrl);
                 }
                 Object.assign(adjuntosData[idx], {
-                    valor       : result.valor,
+                    valor: result.valor,
                     thumbnailUrl: result.thumbnailUrl,
-                    viewUrl     : result.viewUrl,
-                    previewUrl  : result.previewUrl,
-                    fileId      : result.fileId,
-                    isImage     : result.isImage,
+                    viewUrl: result.viewUrl,
+                    previewUrl: result.previewUrl,
+                    fileId: result.fileId,
+                    isImage: result.isImage,
                     // Usar thumbnail Drive URL para imagen (reemplaza blob URL)
-                    thumbnail   : result.isImage ? (result.thumbnailUrl || result.valor) : null,
-                    uploading   : false,
-                    _tempUrl    : null
+                    thumbnail: result.isImage ? (result.thumbnailUrl || result.valor) : null,
+                    uploading: false,
+                    _tempUrl: null
                 });
                 updateAdjuntosGrid();
             }
@@ -1434,8 +1487,10 @@ async function uploadFileToGoogleDrive(file) {
     if (DEV_MODE || !APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'TU_URL_DE_APPS_SCRIPT_AQUI') {
         const tempUrl = URL.createObjectURL(file);
         const isImage = file.type.startsWith('image/');
-        return { valor: tempUrl, thumbnailUrl: isImage ? tempUrl : null,
-                 viewUrl: tempUrl, previewUrl: tempUrl, fileId: null, isImage };
+        return {
+            valor: tempUrl, thumbnailUrl: isImage ? tempUrl : null,
+            viewUrl: tempUrl, previewUrl: tempUrl, fileId: null, isImage
+        };
     }
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1443,20 +1498,20 @@ async function uploadFileToGoogleDrive(file) {
             try {
                 const base64Data = e.target.result.split(',')[1];
                 const resp = await fetch(APPS_SCRIPT_URL, {
-                    method : 'POST',
+                    method: 'POST',
                     redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body   : JSON.stringify({ action:'uploadImage', fileName: file.name, base64Data, mimeType: file.type })
+                    body: JSON.stringify({ action: 'uploadImage', fileName: file.name, base64Data, mimeType: file.type })
                 });
                 const result = await resp.json();
                 if (result.success) {
                     resolve({
-                        valor       : result.data.url,           // thumbnailUrl para imágenes, viewUrl para docs
+                        valor: result.data.url,           // thumbnailUrl para imágenes, viewUrl para docs
                         thumbnailUrl: result.data.thumbnailUrl,
-                        viewUrl     : result.data.viewUrl,
-                        previewUrl  : result.data.previewUrl,
-                        fileId      : result.data.fileId,
-                        isImage     : result.data.isImage
+                        viewUrl: result.data.viewUrl,
+                        previewUrl: result.data.previewUrl,
+                        fileId: result.data.fileId,
+                        isImage: result.data.isImage
                     });
                 } else {
                     reject(new Error(result.message || 'Error al subir'));
@@ -1506,7 +1561,7 @@ function renderAdjuntoCard(a) {
 
 /** Escapa HTML para uso seguro en atributos */
 function escHtml(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /** Actualiza el título de un adjunto al escribir en su input */
@@ -1539,29 +1594,29 @@ function expandAdjunto(a) {
         const imgUrl = a.thumbnailUrl || a.thumbnail || a.valor;
         const viewUrl = a.viewUrl || getDriveViewUrl(a.valor);
         Swal.fire({
-            title           : '',
-            imageUrl        : imgUrl,
-            imageAlt        : a.titulo,
+            title: '',
+            imageUrl: imgUrl,
+            imageAlt: a.titulo,
             showConfirmButton: false,
-            showCloseButton : true,
-            imageWidth      : '100%',
-            footer          : viewUrl
+            showCloseButton: true,
+            imageWidth: '100%',
+            footer: viewUrl
                 ? `<a href="${viewUrl}" target="_blank" class="text-primary small"><i class="fas fa-external-link-alt me-1"></i>Abrir en Drive</a>`
                 : '',
-            customClass     : { popup: 'swal-image-popup' }
+            customClass: { popup: 'swal-image-popup' }
         });
     } else {
         const previewUrl = a.previewUrl || getDrivePreviewUrl(a.valor);
-        const viewUrl    = a.viewUrl    || getDriveViewUrl(a.valor);
+        const viewUrl = a.viewUrl || getDriveViewUrl(a.valor);
         Swal.fire({
-            title           : a.titulo,
-            html            : `<div class="doc-preview-wrap"><iframe src="${previewUrl}" frameborder="0" allowfullscreen></iframe></div>`,
+            title: a.titulo,
+            html: `<div class="doc-preview-wrap"><iframe src="${previewUrl}" frameborder="0" allowfullscreen></iframe></div>`,
             showConfirmButton: false,
-            showCloseButton : true,
-            width           : '90vw',
-            padding         : '0.75rem',
-            footer          : `<a href="${viewUrl}" target="_blank" class="text-primary small"><i class="fas fa-external-link-alt me-1"></i>Abrir en Drive</a>`,
-            customClass     : { popup: 'swal-doc-popup' }
+            showCloseButton: true,
+            width: '90vw',
+            padding: '0.75rem',
+            footer: `<a href="${viewUrl}" target="_blank" class="text-primary small"><i class="fas fa-external-link-alt me-1"></i>Abrir en Drive</a>`,
+            customClass: { popup: 'swal-doc-popup' }
         });
     }
 }
@@ -1574,7 +1629,7 @@ function expandAdjunto(a) {
 function toggleOtrosInput(field, value) {
     const $div = $(`#${field}OtrosDiv`);
     if (value === 'Otros') $div.show().find('input').focus();
-    else                   $div.hide().find('input').val('');
+    else $div.hide().find('input').val('');
 }
 
 /** Devuelve el valor real de Marca (libre si se eligió Otros) */
@@ -1599,8 +1654,8 @@ function getAreaValue() {
  * Alterna visibilidad de contraseña en tarjeta de detalle
  */
 function toggleAccesoPassword(btn) {
-    const span    = document.getElementById(btn.dataset.target);
-    const hidden  = span.classList.contains('pass-hidden');
+    const span = document.getElementById(btn.dataset.target);
+    const hidden = span.classList.contains('pass-hidden');
     span.textContent = hidden ? span.dataset.pass : '••••••••';
     span.classList.toggle('pass-hidden', !hidden);
     btn.querySelector('i').className = hidden ? 'fas fa-eye-slash' : 'fas fa-eye';
@@ -1634,7 +1689,7 @@ function copiarAlPortapapeles(text, btn) {
         const ta = document.createElement('textarea');
         ta.value = text;
         ta.style.position = 'fixed';
-        ta.style.opacity  = '0';
+        ta.style.opacity = '0';
         document.body.appendChild(ta);
         ta.select();
         document.execCommand('copy');
@@ -1648,12 +1703,12 @@ function copiarAlPortapapeles(text, btn) {
  */
 function togglePasswordField(btn) {
     const input = btn.closest('.input-group').querySelector('input');
-    const icon  = btn.querySelector('i');
+    const icon = btn.querySelector('i');
     if (input.type === 'password') {
-        input.type    = 'text';
+        input.type = 'text';
         icon.className = 'fas fa-eye-slash';
     } else {
-        input.type    = 'password';
+        input.type = 'password';
         icon.className = 'fas fa-eye';
     }
 }
