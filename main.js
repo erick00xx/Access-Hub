@@ -3,7 +3,7 @@
 // ============================================
 
 // URL del Web App desplegado de Google Apps Script
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzJH_79LyP9D9RVVtY5pRLfQk4q6LSpv13DxylloHfhdHSIHy-8SkIVeavBJwN36Mk/exec"; // Tomar como referencia al archivo Código.js en el repositorio
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx52j94Jn2fDzFjNgI6a2IQXaPyyPxMzQqf6VxMnjSxXATVez5VAOn10VZcfGkY5tel/exec"; // Tomar como referencia al archivo Código.js en el repositorio
 
 // Modo de desarrollo (usa datos de prueba cuando el backend no está configurado)
 const DEV_MODE = false;
@@ -23,6 +23,7 @@ let adjuntoIdCounter = 0;     // Contador para IDs únicos de adjuntos
 // Sesión activa
 let currentUser = null;    // Nombre del perfil activo (null = sin sesión)
 let isAdmin = false;    // true = modo administrador sin restricciones
+let usuariosData = [];     // Objetos cargados {nombre, pass} desde la hoja
 let responsablesData = []; // Nombres cargados desde la hoja "Responsables"
 
 // ============================================
@@ -164,7 +165,12 @@ function initDataTable() {
                     return getMarcaBadgeHtml(data);
                 }
             },
-            { data: 'responsable' },
+            {
+                data: 'responsable',
+                render: function (data) {
+                    return getResponsablesBadgesHtml(data);
+                }
+            },
             { data: 'area' },
             {
                 data: 'estado',
@@ -242,8 +248,16 @@ function initEventListeners() {
     // Nuevo proyecto
     $('#btnNuevoProyecto').on('click', nuevoProyecto);
 
-    // Guardar proyecto
-    $('#btnGuardarProyecto').on('click', guardarProyecto);
+    // Nuevo proyecto
+    $('#btnNuevoProyecto').on('click', nuevoProyecto);
+
+    // Guardar proyecto o avanzar al siguiente tab
+    $('#btnGuardarProyecto').on('click', guardarOContinuarProyecto);
+
+    // Escuchar el cambio de tabs en el modal para actualizar el botón Siguiente/Guardar
+    $('#modalProyectoTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        updateModalSaveButtonState();
+    });
 
     // Agregar campos dinámicos
     $('#btnAddAcceso').on('click', () => agregarCampoDinamico('accesos'));
@@ -310,7 +324,13 @@ let _proyectosCargados = false;
  */
 async function loadResponsablesAndShowLogin() {
     if (DEV_MODE || APPS_SCRIPT_URL === 'TU_URL_DE_APPS_SCRIPT_AQUI') {
-        responsablesData = ['Erick', 'Scott', 'Luigui', 'Mayra'];
+        usuariosData = [
+            { nombre: 'Erick', pass: '123' },
+            { nombre: 'Scott', pass: '123' },
+            { nombre: 'Luigui', pass: '123' },
+            { nombre: 'Mayra', pass: '123' }
+        ];
+        responsablesData = usuariosData.map(u => u.nombre);
         _cachedAdminPass = 'admin123';
         // Simular datos de demo
         proyectosData = datosDemo;
@@ -330,8 +350,10 @@ async function loadResponsablesAndShowLogin() {
 
         // Responsables
         if (respResp.status === 'fulfilled' && respResp.value.success) {
-            responsablesData = respResp.value.data || [];
+            usuariosData = respResp.value.data || [];
+            responsablesData = usuariosData.map(u => u.nombre);
         } else {
+            usuariosData = [];
             responsablesData = [];
         }
 
@@ -370,6 +392,25 @@ function getAvatarGradient(name) {
     for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
     const g = gradients[hash % gradients.length];
     return `linear-gradient(135deg, ${g[0]}, ${g[1]})`;
+}
+
+/**
+ * Genera el HTML de badges para múltiples responsables separados por "|".
+ */
+function getResponsablesBadgesHtml(responsablesStr) {
+    if (!responsablesStr) return '<span class="text-muted small">Sin asignar</span>';
+
+    const responsables = responsablesStr.split('|').map(r => r.trim()).filter(Boolean);
+
+    return responsables.map(name => {
+        const initials = name.split(' ').map(w => w[0] || '').join('').substring(0, 2).toUpperCase();
+        const gradient = getAvatarGradient(name);
+        return `
+            <div class="d-inline-flex align-items-center gap-1 bg-light border rounded px-2 py-1 me-1 mb-1" style="font-size:0.75rem" title="${escHtml(name)}">
+                <div class="s2-user-avatar-sm" style="background:${gradient}">${initials}</div>
+                <span class="fw-medium text-dark">${escHtml(name)}</span>
+            </div>`;
+    }).join('');
 }
 
 /**
@@ -421,12 +462,55 @@ function showLoginScreen() {
 }
 
 /**
+ * Inicia el proceso de login genérico.
+ */
+async function promptLogin(isAdminRole, expectedPass, userName = null) {
+    const title = isAdminRole ? 'Acceso Restringido' : `Acceso: ${userName}`;
+    const placeholder = isAdminRole ? 'Contraseña de administrador' : 'Ingresa tu contraseña';
+
+    const { value: inputPass } = await Swal.fire({
+        title: title,
+        input: 'password',
+        inputPlaceholder: placeholder,
+        showCancelButton: true,
+        confirmButtonText: 'Ingresar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#1d4ed8',
+        cancelButtonColor: '#64748b',
+        width: '340px',
+        buttonsStyling: true,
+        showClass: { popup: '' },
+        hideClass: { popup: '' },
+        customClass: { container: 'swal-on-top', popup: 'login-pass-popup', title: 'login-pass-title', input: 'login-pass-input' },
+        inputAttributes: { autocomplete: 'new-password', spellcheck: 'false' }
+    });
+
+    if (inputPass === undefined) return; // cancelado
+
+    if (inputPass === expectedPass || (expectedPass === '' && inputPass === '')) {
+        currentUser = isAdminRole ? null : userName;
+        isAdmin = isAdminRole;
+        finishLogin();
+    } else {
+        Swal.fire({
+            icon: 'error',
+            title: 'Contraseña incorrecta',
+            showConfirmButton: false,
+            timer: 1600,
+            width: '300px',
+            showClass: { popup: '' },
+            hideClass: { popup: '' }
+        });
+    }
+}
+
+/**
  * Selecciona un perfil de usuario normal y arranca la app.
  */
 function selectProfile(name) {
-    currentUser = name;
-    isAdmin = false;
-    finishLogin();
+    const user = usuariosData.find(u => u.nombre === name);
+    const expectedPass = user ? (user.pass || '').toString().trim() : '';
+    promptLogin(false, expectedPass, name);
 }
 
 /**
@@ -441,48 +525,15 @@ async function loginAsAdmin() {
             const resp = await fetch(`${APPS_SCRIPT_URL}?action=getPassword`);
             const result = await resp.json();
             if (result.success) {
-                adminPass = result.data;
-                _cachedAdminPass = result.data;
+                adminPass = result.data.toString().trim();
+                _cachedAdminPass = adminPass;
             }
         } catch (e) {
             console.error('Error obteniendo contraseña admin:', e);
         }
     }
 
-    const { value: inputPass } = await Swal.fire({
-        title: 'Acceso restringido',
-        input: 'password',
-        inputPlaceholder: 'Contraseña de administrador',
-        showCancelButton: true,
-        confirmButtonText: 'Ingresar',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#1d4ed8',
-        cancelButtonColor: '#64748b',
-        width: '340px',
-        buttonsStyling: true,
-        showClass: { popup: '' },
-        hideClass: { popup: '' },
-        customClass: { container: 'swal-on-top', popup: 'admin-pass-popup', title: 'admin-pass-title', input: 'admin-pass-input' },
-        inputAttributes: { autocomplete: 'new-password', spellcheck: 'false' }
-    });
-
-    if (inputPass === undefined) return; // cancelado
-
-    if (inputPass === adminPass) {
-        currentUser = null;
-        isAdmin = true;
-        finishLogin();
-    } else {
-        Swal.fire({
-            icon: 'error',
-            title: 'Contraseña incorrecta',
-            showConfirmButton: false,
-            timer: 1600,
-            width: '300px',
-            showClass: { popup: '' },
-            hideClass: { popup: '' }
-        });
-    }
+    promptLogin(true, adminPass);
 }
 
 /**
@@ -509,6 +560,7 @@ function finishLogin() {
 function populateFormResponsable() {
     const $sel = $('#responsable');
     const $fijo = $('#responsableFijo');
+    const $asterisk = $('#responsableAsterisk');
     $sel.empty();
 
     if (!isAdmin && currentUser) {
@@ -520,8 +572,12 @@ function populateFormResponsable() {
                 <span class="fw-semibold text-primary">${escHtml(currentUser)}</span>
             </div>
         `).removeClass('d-none');
+        $sel.removeAttr('required');
+        $asterisk.addClass('d-none');
     } else {
         $fijo.addClass('d-none').empty();
+        $sel.attr('required', 'required');
+        $asterisk.removeClass('d-none');
     }
 
     responsablesData.forEach(name => {
@@ -569,6 +625,92 @@ function applyUserRestrictions() {
     } else {
         $('#filterResponsable').prop('disabled', false).val('');
         $('#filterResponsableLabel').text('Filtrar por Responsable');
+    }
+}
+
+// ============================================
+// WIZARD TABS LOGIC
+// ============================================
+
+/**
+ * Lógica para el botón Siguiente/Guardar.
+ * Si no estamos en el último tab ("Estado"), valida y avanza.
+ * Si estamos en el último, guarda el proyecto.
+ */
+function guardarOContinuarProyecto() {
+    const tabsList = ['#tab-general', '#tab-accesos', '#tab-estado'];
+    const activeTabButton = document.querySelector('#modalProyectoTabs button.active');
+    const targetId = activeTabButton ? activeTabButton.getAttribute('data-bs-target') : '#tab-general';
+
+    // Obtener el input/select con error visible usando Form API native functionality
+    if (!$('#formProyecto')[0].checkValidity()) {
+        const invalidFields = $('#formProyecto :invalid');
+        if (invalidFields.length > 0) {
+            // Find which tab the first invalid element belongs to
+            const firstInvalid = invalidFields.first();
+            const parentTab = firstInvalid.closest('.tab-pane');
+            if (parentTab && parentTab.attr('id') !== targetId.substring(1)) {
+                $(`#modalProyectoTabs button[data-bs-target="#${parentTab.attr('id')}"]`).tab('show');
+                // Allow Bootstrap to animate the tab transition
+                setTimeout(() => $('#formProyecto')[0].reportValidity(), 200);
+            } else {
+                $('#formProyecto')[0].reportValidity();
+            }
+        }
+        return;
+    }
+
+    const currentIndex = tabsList.indexOf(targetId);
+
+    // Si NO estamos en el último tab (índice 2, "Estado")
+    if (currentIndex < tabsList.length - 1) {
+        // En "Datos Generales", validamos si el "Responsable" múltiple está lleno (para Admins)
+        if (currentIndex === 0 && isAdmin) {
+            const responsablesSeleccionados = Array.from($('#responsable')[0].selectedOptions).map(o => o.value);
+            if (responsablesSeleccionados.length === 0) {
+                showError('Por favor selecciona al menos un responsable.');
+                return;
+            }
+        }
+
+        // Validar campos "Otros" si están activos en pestaña 1
+        if (currentIndex === 0) {
+            if ($('#marca').val() === 'Otros' && !$('#marcaOtros').val().trim()) {
+                showError('Por favor escribe el nombre de la marca.');
+                $('#marcaOtros').focus();
+                return;
+            }
+            if ($('#area').val() === 'Otros' && !$('#areaOtros').val().trim()) {
+                showError('Por favor escribe el nombre del área.');
+                $('#areaOtros').focus();
+                return;
+            }
+        }
+
+        // Avanzar al siguiente tab
+        const nextTarget = tabsList[currentIndex + 1];
+        $(`#modalProyectoTabs button[data-bs-target="${nextTarget}"]`).tab('show');
+    } else {
+        // Ejecutar guardado final si estamos en Estado
+        guardarProyecto();
+    }
+}
+
+/**
+ * Actualiza el texto y apariencia del botón para leer "Siguiente" o "Guardar Proyecto".
+ */
+function updateModalSaveButtonState() {
+    const $btn = $('#btnGuardarProyecto');
+    const activeTab = document.querySelector('#modalProyectoTabs button.active');
+    const target = activeTab ? activeTab.getAttribute('data-bs-target') : '#tab-general';
+
+    if (target === '#tab-estado') {
+        $btn.html('<i class="fas fa-save me-1"></i>Guardar Proyecto');
+        $btn.removeClass('btn-info text-white').addClass('btn-primary');
+    } else {
+        // Mantener bootstrap consistent colors pero cambiar contenido
+        $btn.html('Siguiente <i class="fas fa-chevron-right ms-1"></i>');
+        $btn.removeClass('btn-primary').addClass('btn-info text-white');
     }
 }
 
@@ -750,43 +892,19 @@ function editarProyecto(id) {
     updateAdjuntosGrid();
 
     actualizarVisibilidadNoItems();
+
+    // Activa la primera pestaña al abrir modal
+    $('#tab-general-btn').tab('show');
+    updateModalSaveButtonState();
+
     $('#modalProyecto').modal('show');
 }
 
 /**
  * Guarda el proyecto (crear o actualizar)
+ * Note: CheckValidity y saltos manuales se manejan en guardarOContinuarProyecto.
  */
 async function guardarProyecto() {
-    if (!$('#formProyecto')[0].checkValidity()) {
-        $('#formProyecto')[0].reportValidity();
-        return;
-    }
-
-    // Validar responsable multi-select
-    const responsablesSeleccionados = Array.from($('#responsable')[0].selectedOptions).map(o => o.value);
-
-    // Solo requerir si es Admin, ya que los usuarios normales siempre tienen su propio perfil como responsable fijo
-    if (isAdmin && responsablesSeleccionados.length === 0) {
-        showError('Por favor selecciona al menos un responsable.');
-        // Ir a la primera pestaña
-        $('#tab-general-btn').tab('show');
-        return;
-    }
-
-    // Validar campos "Otros" si están activos
-    if ($('#marca').val() === 'Otros' && !$('#marcaOtros').val().trim()) {
-        showError('Por favor escribe el nombre de la marca.');
-        $('#tab-general-btn').tab('show');
-        $('#marcaOtros').focus();
-        return;
-    }
-    if ($('#area').val() === 'Otros' && !$('#areaOtros').val().trim()) {
-        showError('Por favor escribe el nombre del área.');
-        $('#tab-general-btn').tab('show');
-        $('#areaOtros').focus();
-        return;
-    }
-
     const proyecto = {
         id: $('#proyectoId').val() || generarId(),
         fechaCreacion: $('#proyectoId').val() ?
@@ -958,7 +1076,7 @@ function verProyecto(id) {
                 </div>` : ''}
                 <div class="detalle-info-item">
                     <span class="detalle-info-label"><i class="fas fa-user me-1"></i>Responsable</span>
-                    <span class="detalle-info-value fw-semibold">${proyecto.responsable}</span>
+                    <div class="mt-1">${getResponsablesBadgesHtml(proyecto.responsable)}</div>
                 </div>
                 <div class="detalle-info-item">
                     <span class="detalle-info-label"><i class="fas fa-building me-1"></i>Área</span>

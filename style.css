@@ -240,13 +240,13 @@ body {
 /* Quill alto expandido (Requerimiento) */
 #editorRequerimiento.ql-container,
 #editorRequerimiento .ql-editor {
-    min-height: 350px !important;
+    min-height: 175px !important;
 }
 
 /* Editor de Comentarios: altura cómoda */
 #editorComentarios.ql-container,
 #editorComentarios .ql-editor {
-    min-height: 250px !important;
+    min-height: 125px !important;
 }
 
 /* ============================================
@@ -680,9 +680,13 @@ body {
     border-radius: 8px;
     padding: 1rem 1.25rem;
     font-size: 0.93rem;
-    line-height: 1.7;
+    line-height: 1.1;
     color: #374151;
     min-height: 3rem;
+}
+
+.detalle-rich-content p {
+    margin-bottom: 0.5rem;
 }
 
 /* Acceso grid */
@@ -1573,13 +1577,13 @@ body {
    Popup Contraseña Admin — Diseño Sobrio
    ============================================ */
 
-.admin-pass-popup {
+.login-pass-popup {
     border-radius: 8px !important;
     padding: 1.5rem 1.75rem !important;
     font-family: 'Inter', sans-serif !important;
 }
 
-.admin-pass-title {
+.login-pass-title {
     font-size: 0.95rem !important;
     font-weight: 600 !important;
     color: #1e293b !important;
@@ -1587,7 +1591,7 @@ body {
     margin-bottom: 0.75rem !important;
 }
 
-.admin-pass-input {
+.login-pass-input {
     font-size: 0.875rem !important;
     padding: 0.5rem 0.75rem !important;
     border-radius: 6px !important;

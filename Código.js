@@ -41,9 +41,9 @@ const COLUMNS = {
 function doGet(e) {
   const action = e.parameter.action;
   let response;
-  
+
   try {
-    switch(action) {
+    switch (action) {
       case 'getProyectos':
         response = getProyectos();
         break;
@@ -59,10 +59,10 @@ function doGet(e) {
       default:
         response = { success: false, message: 'Acción no válida' };
     }
-  } catch(error) {
+  } catch (error) {
     response = { success: false, message: error.toString() };
   }
-  
+
   return ContentService
     .createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
@@ -73,13 +73,13 @@ function doGet(e) {
  */
 function doPost(e) {
   let response;
-  
+
   try {
     // Usamos el contenido parseado de la petición
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
-    
-    switch(action) {
+
+    switch (action) {
       case 'createProyecto':
         response = createProyecto(data.proyecto);
         break;
@@ -95,10 +95,10 @@ function doPost(e) {
       default:
         response = { success: false, message: 'Acción no válida' };
     }
-  } catch(error) {
+  } catch (error) {
     response = { success: false, message: error.toString() };
   }
-  
+
   return ContentService
     .createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
@@ -114,7 +114,7 @@ function doPost(e) {
 function getProyectos() {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
-  
+
   // Saltar la fila de encabezados
   const proyectos = [];
   for (let i = 1; i < data.length; i++) {
@@ -123,7 +123,7 @@ function getProyectos() {
       proyectos.push(rowToProyecto(row));
     }
   }
-  
+
   return { success: true, data: proyectos };
 }
 
@@ -133,13 +133,13 @@ function getProyectos() {
 function getProyecto(id) {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
-  
+
   for (let i = 1; i < data.length; i++) {
     if (data[i][COLUMNS.ID].toString() === id.toString()) {
       return { success: true, data: rowToProyecto(data[i]) };
     }
   }
-  
+
   return { success: false, message: 'Proyecto no encontrado' };
 }
 
@@ -148,23 +148,23 @@ function getProyecto(id) {
  */
 function createProyecto(proyecto) {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
-  
+
   // Generar ID si no tiene
   if (!proyecto.id) {
     proyecto.id = generateId();
   }
-  
+
   // Establecer fecha de creación
   if (!proyecto.fechaCreacion) {
     proyecto.fechaCreacion = formatDate(new Date());
   }
-  
+
   // Convertir proyecto a fila
   const row = proyectoToRow(proyecto);
-  
+
   // Agregar al final de la hoja
   sheet.appendRow(row);
-  
+
   return { success: true, data: proyecto, message: 'Proyecto creado exitosamente' };
 }
 
@@ -174,7 +174,7 @@ function createProyecto(proyecto) {
 function updateProyecto(proyecto) {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
-  
+
   // Buscar la fila del proyecto
   let rowIndex = -1;
   for (let i = 1; i < data.length; i++) {
@@ -183,21 +183,21 @@ function updateProyecto(proyecto) {
       break;
     }
   }
-  
+
   if (rowIndex === -1) {
     return { success: false, message: 'Proyecto no encontrado' };
   }
-  
+
   // Actualizar fecha de actualización
   proyecto.fechaActualizacion = formatDate(new Date());
-  
+
   // Convertir proyecto a fila
   const row = proyectoToRow(proyecto);
-  
+
   // Actualizar la fila
   const range = sheet.getRange(rowIndex, 1, 1, row.length);
   range.setValues([row]);
-  
+
   return { success: true, data: proyecto, message: 'Proyecto actualizado exitosamente' };
 }
 
@@ -207,7 +207,7 @@ function updateProyecto(proyecto) {
 function deleteProyecto(id) {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
-  
+
   // Buscar la fila del proyecto
   for (let i = 1; i < data.length; i++) {
     if (data[i][COLUMNS.ID].toString() === id.toString()) {
@@ -215,7 +215,7 @@ function deleteProyecto(id) {
       return { success: true, message: 'Proyecto eliminado exitosamente' };
     }
   }
-  
+
   return { success: false, message: 'Proyecto no encontrado' };
 }
 
@@ -231,44 +231,48 @@ function deleteProyecto(id) {
 function uploadImage(fileName, base64Data, mimeType) {
   try {
     const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    
+
     // Generar nombre con fecha-hora Perú + ID único
-    const now      = new Date();
+    const now = new Date();
     const datePart = Utilities.formatDate(now, 'America/Lima', 'yyyyMMdd_HHmm');
     const uniqueId = Math.random().toString(36).substring(2, 7).toUpperCase();
     const safeOrig = fileName.replace(/[^a-zA-Z0-9._\-]/g, '_');
     const finalName = `${datePart}_${uniqueId}_${safeOrig}`;
-    
+
     // Decodificar base64 y crear archivo
     const decoded = Utilities.base64Decode(base64Data);
-    const blob    = Utilities.newBlob(decoded, mimeType, finalName);
-    const file    = folder.createFile(blob);
-    
-    // Permisos públicos de lectura
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    const fileId     = file.getId();
-    const isImage    = mimeType.startsWith('image/');
-    
+    const blob = Utilities.newBlob(decoded, mimeType, finalName);
+    const file = folder.createFile(blob);
+
+    // Permisos públicos de lectura (ignorar error silenciosamente si falla debido a directivas / Shared Drives)
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {
+      Logger.log('Set sharing failed, proceeding anyway: ' + e.toString());
+    }
+
+    const fileId = file.getId();
+    const isImage = mimeType.startsWith('image/');
+
     // thumbnail?id= funciona para <img> sin problemas de CORS/CSP
     const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
-    const viewUrl      = `https://drive.google.com/file/d/${fileId}/view`;
-    const previewUrl   = `https://drive.google.com/file/d/${fileId}/preview`;
-    
+    const viewUrl = `https://drive.google.com/file/d/${fileId}/view`;
+    const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+
     return {
       success: true,
       data: {
-        fileId        : fileId,
-        fileName      : finalName,
-        originalName  : fileName,
-        url           : isImage ? thumbnailUrl : viewUrl,   // valor principal guardado en sheet
-        thumbnailUrl  : thumbnailUrl,
-        viewUrl       : viewUrl,
-        previewUrl    : previewUrl,
-        isImage       : isImage
+        fileId: fileId,
+        fileName: finalName,
+        originalName: fileName,
+        url: isImage ? thumbnailUrl : viewUrl,   // valor principal guardado en sheet
+        thumbnailUrl: thumbnailUrl,
+        viewUrl: viewUrl,
+        previewUrl: previewUrl,
+        isImage: isImage
       }
     };
-  } catch(error) {
+  } catch (error) {
     return { success: false, message: error.toString() };
   }
 }
@@ -281,7 +285,7 @@ function listImages() {
     const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
     const files = folder.getFiles();
     const images = [];
-    
+
     while (files.hasNext()) {
       const file = files.next();
       images.push({
@@ -293,9 +297,9 @@ function listImages() {
         dateCreated: file.getDateCreated()
       });
     }
-    
+
     return { success: true, data: images };
-  } catch(error) {
+  } catch (error) {
     return { success: false, message: error.toString() };
   }
 }
@@ -305,28 +309,33 @@ function listImages() {
 // ============================================
 
 /**
- * Lee la hoja "Responsables" y devuelve los nombres (columna A, sin cabecera).
+ * Lee la hoja "Responsables" y devuelve los nombres (columna A, sin cabecera) y sus contraseñas (columna D).
  */
 function getResponsables() {
-  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Responsables');
   if (!sheet) return { success: false, message: 'Hoja Responsables no encontrada' };
 
-  const data   = sheet.getDataRange().getValues();
-  const nombres = [];
-  // Saltamos fila 0 (encabezados: Nombre | Cargo | Correo)
+  const data = sheet.getDataRange().getValues();
+  const perfiles = [];
+  // Saltamos fila 0 (encabezados: Nombre | Cargo | Correo | Pass)
   for (let i = 1; i < data.length; i++) {
     const nombre = (data[i][0] || '').toString().trim();
-    if (nombre) nombres.push(nombre);
+    // Columna A = 0, B = 1, C = 2, D = 3 (Pass)
+    const pass = (data[i][3] || '').toString().trim();
+
+    if (nombre) {
+      perfiles.push({ nombre: nombre, pass: pass });
+    }
   }
-  return { success: true, data: nombres };
+  return { success: true, data: perfiles };
 }
 
 /**
  * Lee la contraseña de administrador desde la hoja "Password", celda A1.
  */
 function getPassword() {
-  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Password');
   if (!sheet) return { success: false, message: 'Hoja Password no encontrada' };
 
@@ -389,10 +398,10 @@ function proyectoToRow(proyecto) {
  */
 function parseMultipleItems(value) {
   if (!value) return [];
-  
+
   const items = [];
   const parts = value.toString().split('||');
-  
+
   parts.forEach(part => {
     const trimmed = part.trim();
     if (trimmed) {
@@ -420,7 +429,7 @@ function parseMultipleItems(value) {
       }
     }
   });
-  
+
   return items;
 }
 
@@ -429,7 +438,7 @@ function parseMultipleItems(value) {
  */
 function serializeMultipleItems(items) {
   if (!items || !Array.isArray(items) || items.length === 0) return '';
-  
+
   return items
     .filter(item => item.titulo || item.valor)
     .map(item => `${item.titulo}>>>${item.valor}`)
@@ -469,7 +478,7 @@ function formatDateValue(value) {
  */
 function sendNotificationEmail(proyecto, recipients) {
   const subject = `Nuevo Proyecto: ${proyecto.nombreProyecto}`;
-  
+
   const htmlBody = `
     <h2>Nuevo Proyecto Registrado</h2>
     <p><strong>Nombre:</strong> ${proyecto.nombreProyecto}</p>
@@ -481,7 +490,7 @@ function sendNotificationEmail(proyecto, recipients) {
     <h3>Requerimiento:</h3>
     <div>${proyecto.requerimiento}</div>
   `;
-  
+
   try {
     MailApp.sendEmail({
       to: recipients,
@@ -489,7 +498,7 @@ function sendNotificationEmail(proyecto, recipients) {
       htmlBody: htmlBody
     });
     return { success: true, message: 'Email enviado' };
-  } catch(error) {
+  } catch (error) {
     return { success: false, message: error.toString() };
   }
 }
@@ -524,7 +533,7 @@ function testCreateProyecto() {
     estado: 'En proceso',
     comentariosEstado: ''
   };
-  
+
   const result = createProyecto(proyecto);
   Logger.log(JSON.stringify(result, null, 2));
 }
