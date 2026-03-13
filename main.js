@@ -484,7 +484,7 @@ function getResponsablesBadgesHtml(responsablesStr) {
  */
 function getMarcaBadgeHtml(marca) {
     if (!marca) return '';
-    const predefinedBrands = ['IEmpresa', 'JVN', 'Blackwell', 'ITAE', 'Eurocoach', 'Iberoteca', 'Thoth'];
+    const predefinedBrands = ['IEmpresa', 'JVN', 'Blackwell', 'ITAE', 'Eurocoach', 'Iberoteca', 'Thoth', 'Baltic', 'Todas'];
 
     const upperMarca = marca.toUpperCase();
     const predefinedMatched = predefinedBrands.find(b => b.toUpperCase() === upperMarca);
@@ -1088,7 +1088,7 @@ function verProyecto(id) {
             return `
             <div class="d-flex align-items-center justify-content-between border rounded p-2 shadow-sm bg-white" style="transition: all 0.2s;">
                 <div class="d-flex align-items-center overflow-hidden w-100 me-2">
-                    <span class="fw-bold text-primary me-3 text-truncate" style="min-width: 120px; font-size: 0.85rem;">${p.titulo}</span>
+                    <span class="fw-bold text-primary me-3 text-truncate" style="flex: 0 0 42%; min-width: 80px; font-size: 0.85rem;">${p.titulo}</span>
                     <a class="text-truncate flex-grow-1 text-decoration-none" href="${p.valor}" target="_blank" title="${p.valor}" style="font-size: 0.85rem; color: #475569;"><i class="fas fa-external-link-alt me-1 text-muted"></i>${p.valor}</a>
                 </div>
                 <button type="button" class="btn btn-sm btn-light border btn-acceso-action flex-shrink-0" data-v="${urlEsc}" onclick="copiarAlPortapapeles(this.dataset.v, this)" title="Copiar URL">
@@ -1107,7 +1107,7 @@ function verProyecto(id) {
             <table class="table table-sm table-hover mb-0 align-middle compact-table">
                 <thead class="bg-light text-muted" style="font-size: 0.75rem; text-transform: uppercase;">
                     <tr>
-                        <th class="ps-3 border-bottom-0 py-2">Plataforma</th>
+                        <th class="ps-3 border-bottom-0 py-2">Tipo</th>
                         <th class="border-bottom-0 py-2">Usuario</th>
                         <th class="border-bottom-0 py-2 pe-3 text-end">Contraseña</th>
                     </tr>
